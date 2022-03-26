@@ -44,6 +44,14 @@
 				"header": []
 			},
 			"response": []
+		},
+		{
+			"name": "Get mesages",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
 		}
 	]
 }

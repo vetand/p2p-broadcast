@@ -34,3 +34,11 @@ def add_peer():
         return 'OK'
 
     return 'NOT OK'
+
+@app.route('/get-messages')
+def get_messages():
+    global node
+
+    size = request.args.get('size')
+    messages = node.get_recent_messages(size)
+    return str(messages)

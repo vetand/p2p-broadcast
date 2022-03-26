@@ -6,13 +6,14 @@ from peer import Peer
 from message import Message, message_from_json
 from transport import Transport
 
-MAX_CACHE_MESSAGES = 10
+MAX_CACHE_MESSAGES = 100
 
 class Node:
     def __init__(self):
         self.id = str(uuid.uuid4())
         self.known_peers = set()
         self.messages_receipt_time = dict()
+        self.messages = dict()
         self.transport = Transport()
 
     def add_peer(self, peer):
@@ -26,7 +27,7 @@ class Node:
 
     def validate_message(self, message) -> bool:
         if message.id in self.messages_receipt_time.keys():
-            logging.info('Ignore messgage {} as it was previously broadcasted'.format(message.id))
+            logging.info('Ignore message {} as it was previously broadcasted'.format(message.id))
             return False
         return True
 
@@ -34,11 +35,13 @@ class Node:
         if len(self.messages_receipt_time) >= MAX_CACHE_MESSAGES:
             message_to_exclude = min(self.messages_receipt_time.items(), key=lambda row: row[1])
             del self.messages_receipt_time[message_to_exclude[0]]
+            del self.messages[message_to_exclude[0]]
 
     def on_message_receive(self, message):
         logging.info('Got message {}'.format(message.id))
         if self.validate_message(message):
             self.messages_receipt_time[message.id] = time.time()
+            self.messages[message.id] = message
             self.inspect_messages_store()
             self.broadcast(message)
 
@@ -47,3 +50,12 @@ class Node:
 
     def send_qr(self, filename = "QR.png"):
         self.get_peer_info().make_qr_code(filename)
+
+    def get_recent_messages(self, size):
+        size = int(size)
+        result = []
+        for item in sorted(self.messages_receipt_time.items())[::-1]:
+            if len(result) == size:
+                break
+            result.append(self.messages[item[0]].text)
+        return result
