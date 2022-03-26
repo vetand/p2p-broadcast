@@ -3,11 +3,12 @@ import uuid
 
 from node import Node
 from message import Message, message_from_json
-from peer import Peer
+from peer import Peer, from_qr_code
 
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
+    # basic interface ###############################################
     node = Node()
 
     peer1 = Peer('peer-1')
@@ -27,3 +28,10 @@ if __name__ == "__main__":
 
     node.on_message_receive(message) # not ignore
     node.on_message_receive(message) # ignore again
+
+    # QR generation ###############################################
+
+    logging.info("node ID = {}".format(node.id))
+    node.send_qr()
+    peer = from_qr_code()
+    logging.info("generated peer ID = {}".format(peer.id()))

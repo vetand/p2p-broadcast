@@ -2,6 +2,7 @@ import logging
 import time
 import uuid
 
+from peer import Peer
 from message import Message, message_from_json
 from transport import Transport
 
@@ -38,3 +39,9 @@ class Node:
             self.messages_receipt_time[message.id] = time.time()
             self.inspect_messages_store()
             self.broadcast(message)
+
+    def get_peer_info(self) -> Peer:
+        return Peer(self.id)
+
+    def send_qr(self, filename = "QR.png"):
+        self.get_peer_info().make_qr_code(filename)
