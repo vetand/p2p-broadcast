@@ -5,12 +5,8 @@ from node import Node
 from message import Message, message_from_json
 from peer import Peer, from_qr_code
 
-logging.basicConfig(level=logging.INFO)
-
-if __name__ == "__main__":
+def run_playbook(node):
     # basic interface ###############################################
-    node = Node()
-
     peer1 = Peer('peer-1')
     peer2 = Peer('peer-47')
 

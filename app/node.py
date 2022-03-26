@@ -16,6 +16,8 @@ class Node:
         self.transport = Transport()
 
     def add_peer(self, peer):
+        if peer in self.known_peers:
+            return
         self.known_peers.add(peer)
 
     def broadcast(self, message):
