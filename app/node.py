@@ -16,10 +16,11 @@ MAX_CACHE_MESSAGES = 10
 KEY_STORAGE = 'key.pem'
 
 class PeersInfo:
-    def __init__(self, peer_id, pubkey):
+    def __init__(self, peer_id, pubkey, transports):
         self.peer_id = peer_id
         self.verifications = 1
         self.pubkey = pubkey
+        self.transports = transports
 
     def verify(self):
         self.verifications += 1
@@ -28,7 +29,7 @@ class PeersInfo:
         return self.verifications >= 3 or self.verifications >= system_size
 
     def get_peer(self):
-        return Peer(self.peer_id, self.pubkey)
+        return Peer(self.peer_id, self.pubkey, self.transports)
 
 class Node:
     def __init__(self):
@@ -54,14 +55,17 @@ class Node:
         self.messages_receipt_time = dict()
         self.messages = dict()
 
-        self.transport = Transport()
+        self.transports = []
+
+    def add_transport(self, transport):
+        self.transports.append(transport)
 
     def add_peer(self, peer, already_verified=False):
         if peer.id in self.known_peers.keys():
             self.known_peers[peer.id].verify()
             return
 
-        self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey)
+        self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.transports)
         if already_verified:
             self.known_peers[peer.id].verifications = 3
 
@@ -167,7 +171,10 @@ class Node:
                 self.add_peer(peer, already_verified=True)
 
     def get_peer_info(self) -> Peer:
-        return Peer(self.id, self.get_pubkey())
+        infos = dict()
+        for t in self.transports:
+            infos[t.get_name()] = t.get_peer_info()
+        return Peer(self.id, self.get_pubkey(), infos)
 
     def send_qr(self, filename = "QR.png"):
         self.get_peer_info().make_qr_code(filename)
@@ -197,4 +204,4 @@ class Node:
         signer = PKCS1_v1_5.new(RSA.importKey(privkey))
         final_message['signature'] = signer.sign(digest).hex()
         raw_message = json.dumps(final_message)
-        self.transport.send_message(raw_message)
+        #self.transport.send_message(raw_message)

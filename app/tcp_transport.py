@@ -48,7 +48,7 @@ class TCPTransport(Transport):
             logging.info("Strange message")
             return
 
-    async def get_peer_info(self):
+    def get_peer_info(self):
         return {"host": self.config["host"], "port": self.config["port"]}
 
     async def establish(self):
@@ -56,3 +56,6 @@ class TCPTransport(Transport):
         self.server = await asyncio.start_server(
             self.on_tcp_message, self.config["host"], self.config["port"])
         logging.info("TCP server started!")
+
+    def get_name(self):
+        return "tcp"

@@ -1,6 +1,6 @@
 import asyncio
 
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, File, UploadFile
 from node import Node
 import logging
 from peer import from_qr_code
@@ -16,7 +16,7 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def startup_event():
-    asyncio.ensure_future(main(), loop=asyncio.get_running_loop())
+    asyncio.ensure_future(main(node=node), loop=asyncio.get_running_loop())
 
 @app.get('/playbook')
 def playbook():
@@ -30,11 +30,12 @@ def get_peer():
     return FileResponse(filename, media_type='image/png')
 
 @app.post('/add-peer')
-def add_peer(file: UploadFile):
+async def add_peer(file: UploadFile = File(...)):
     global node
-    node.add_and_broadcast_peer(from_qr_code(file.filename))
-    for peer in node.known_peers:
-        logging.info(peer.id)
+    contents = await file.read()
+    node.add_and_broadcast_peer(from_qr_code(contents))
+    for key in node.known_peers:
+        logging.info("listing peer {}".format(node.known_peers[key]))
     return 'OK'
 
 @app.get('/get-messages')

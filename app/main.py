@@ -5,9 +5,10 @@ import aiofiles
 import argparse
 from telegram_transport import TelegramTransport
 from tcp_transport import TCPTransport
+from node import Node
 
 
-async def main(console_mode=False):
+async def main(node: Node, console_mode=False):
     in_file = None
     config = None
     if console_mode:
@@ -33,6 +34,7 @@ async def main(console_mode=False):
             transport.set_on_message(on_message)
             await transport.establish()
             transports.append(transport)
+            node.add_transport(transport)
     if console_mode:
         while True:
             cmd = await in_file.readline()
@@ -54,5 +56,5 @@ async def main(console_mode=False):
 
 
 if __name__ == "__main__":
-    asyncio.ensure_future(main(True))
+    asyncio.ensure_future(main(node=Node(), console_mode=True))
     asyncio.get_event_loop().run_forever()

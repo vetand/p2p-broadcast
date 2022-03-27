@@ -20,3 +20,9 @@ class Transport:
 
     def send_message(self, peer, message):
         logging.info("Send message {} to peer {}".format(message, peer.id))
+
+    def get_peer_info(self) -> dict:
+        pass
+
+    def get_name(self) -> str:
+        pass

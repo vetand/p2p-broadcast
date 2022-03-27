@@ -42,7 +42,7 @@ class TelegramTransport(Transport):
         except json.JSONDecodeError:
             return
 
-    async def get_peer_info(self):
+    def get_peer_info(self):
         return {"phone": self.config["phone"]}
 
     async def establish(self):
@@ -64,3 +64,6 @@ class TelegramTransport(Transport):
                     logging.info("Password incorrect")
                     raise EastablishTransportError()
         logging.info("Authorized to Telegram successfully")
+
+    def get_name(self):
+        return "telegram"
