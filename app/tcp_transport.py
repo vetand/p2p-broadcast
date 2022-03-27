@@ -19,13 +19,17 @@ class TCPTransport(Transport):
         return TCPTransport(d)
 
     async def send_message(self, peer, message):
-        wrapped_message = {"protocol": "p2p-1.0", "payload": message}
-        reader, writer = await asyncio.open_connection(
-            peer["host"], peer["port"])
-        writer.write(json.dumps(wrapped_message).encode())
-        await writer.drain()
-        writer.close()
-        await writer.wait_closed()
+        try:
+            wrapped_message = {"protocol": "p2p-1.0", "payload": message}
+            reader, writer = await asyncio.open_connection(
+                peer["host"], peer["port"])
+            writer.write(json.dumps(wrapped_message).encode())
+            await writer.drain()
+            writer.close()
+            await writer.wait_closed()
+        except:
+            logging.info("Could not send with TCP")
+            return
 
     async def on_tcp_message(self, reader, writer):
         msg = (await reader.read()).decode().strip()

@@ -7,6 +7,7 @@ import uuid
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA
+from Crypto.Random import get_random_bytes
 from peer import Peer
 from message import Message, message_from_json, known_peers_message
 from transport import Transport
@@ -34,7 +35,7 @@ class Node:
         self.id = str(uuid.uuid4())
 
         if not os.path.exists(KEY_STORAGE):
-            key = RSA.generate(1024, random_generator)
+            key = RSA.generate(1024, get_random_bytes)
             f = open(KEY_STORAGE,'wb')
             f.write(key.export_key('PEM'))
             f.close()
