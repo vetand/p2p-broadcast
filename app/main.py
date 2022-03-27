@@ -2,28 +2,33 @@ import asyncio
 import yaml
 import logging
 import aiofiles
+import argparse
 from telegram_transport import TelegramTransport
 from tcp_transport import TCPTransport
 
-logging.basicConfig(filename="log.txt", level=logging.INFO)
-
 async def main():
-    config = yaml.safe_load(open("config.yaml", "r"))
+    parser = argparse.ArgumentParser(description="p2p-broadcast console")
+    parser.add_argument('--config', default="config.yaml",
+                        help='Config file path')
+    args = parser.parse_args()
+
+    config = yaml.safe_load(open(args.config, "r"))
+    logging.basicConfig(filename=config["log_file"], level=logging.INFO)
     in_file = await aiofiles.open("/dev/stdin", "r")
     out_file = await aiofiles.open("/dev/stdout", "w")
 
-    transport_creators = [TelegramTransport.create_from_config, TCPTransport.create_from_config]
+    transport_creators = {"telegram": TelegramTransport.create_from_config, "tcp": TCPTransport.create_from_config}
     transports = []
-
 
     def on_message(m):
         logging.warning("New message: {}".format(m))
 
     for creator in transport_creators:
-        transport = creator(config["transports"])
-        transport.set_on_message(on_message)
-        await transport.establish()
-        transports.append(transport)
+        if creator in config["transports"]:
+            transport = (transport_creators[creator])(config["transports"])
+            transport.set_on_message(on_message)
+            await transport.establish()
+            transports.append(transport)
 
     while True:
         cmd = await in_file.readline()
