@@ -6,7 +6,6 @@ import asyncio
 API_ID = 10534
 API_HASH = "844584f2b1fd2daecee726166dcc1ef8"
 
-
 class TCPTransport(Transport):
 
     def __init__(self, config):
@@ -39,8 +38,10 @@ class TCPTransport(Transport):
                 return
             self.on_message(json.loads(res["payload"]))
         except json.JSONDecodeError:
+            logging.info("JSON error")
             return
         except:
+            logging.info("Strange message")
             return
 
     async def get_peer_info(self):
