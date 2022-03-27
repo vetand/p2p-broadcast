@@ -39,7 +39,9 @@ class Node:
             f.write(key.export_key('PEM'))
             f.close()
         else:
-            encoded_key = open(KEY_STORAGE, "rb").read()
+            f = open(KEY_STORAGE, "rb")
+            encoded_key = f.read()
+            f.close()
             key = RSA.import_key(encoded_key)   
 
         self.pubkey = key.publickey().export_key()
@@ -95,7 +97,15 @@ class Node:
         if not peer.pubkey:
             return False
 
-        verifier = PKCS1_v1_5.new(RSA.import_key(peer.pubkey))
+        pubkey = peer.pubkey
+        try:
+            pubkey = pubkey.encode('utf-8')
+        except Exception as e:
+            pass
+
+        print("----------------", message, pubkey)
+
+        verifier = PKCS1_v1_5.new(RSA.import_key(pubkey))
         return verifier.verify(digest, bytes.fromhex(signature))
 
     def validate_message(self, message, signature) -> bool:
@@ -107,7 +117,12 @@ class Node:
             logging.info('Ignore message {} as it came from unverified peer'.format(message.id))
             return False
 
-        if not self.verify_signature(message, signature):
+        raw_message = {
+            'id': message.id,
+            'text': message.text,
+            'sender': message.sender,
+        }
+        if not self.verify_signature(raw_message , signature):
             logging.info('Ignore message {} as bad signature'.format(message.id))
             return False
 
@@ -143,9 +158,9 @@ class Node:
             if not self.verify_signature(message, signature):
                 logging.info('Ignore new peer as bad signature')
                 return False
-
-            peer = Peer(message['sender'], message[''])
-            self.add_peer(message['peer'])
+ 
+            peer = Peer(message['newcomer']['id'], message['newcomer']['pubkey'])
+            self.add_peer(peer)
         # receive full peer_list from other node
         elif message[0] == 'known_peers':
             message = message[1]

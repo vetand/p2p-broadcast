@@ -10,12 +10,13 @@ from message import Message, message_from_json
 from peer import Peer, from_qr_code
 
 PRIVATE_KEY = b'-----BEGIN RSA PRIVATE KEY-----\nMIICXAIBAAKBgQD34AJOnZfW5qkM6EOZDYfi8Iac53GZ6gF5UaHzTv7UoWT2ViMU\n2QJd/nPfuO9pURedGZeGwLlX2tyweIHGcYS/Xrvxqxh6HcdQeMm/99FlzFA2rvXF\np+N3FftkJaq3LrB29WNGLiMb/j/JZMI9PvuvwI9CL4oLWQaNXiyeghDQxwIDAQAB\nAoGAM/yOX1CcFN1BnUxlSQdWdZk+kk/UOpSihIBDeBUcSxoiY6vDJc8xuObyBHzz\n8WGpkzBX4FIxTSTA3l4X0bfjQBoAcvbGFm20g4Czxw0e+DeaHlFHjii1ccBrjgyK\nNauhBrcUKvMO4LFJDrrYJiwzmsRjGbooFohzCLjyv0FppnkCQQD4bLMhp1zOK6sA\n8a+5Qg5L7JoAAiFO1TqjikCM6A077FQ2fhOeycMKeMXpU/WOad8L/P3zkZZbSfVK\nAcKj5qPzAkEA/28E43SObJbpaG+Zxd6thQB5EKkdiRjE7ugkzjpTRVFOdN0Agq/w\nhOOaRYhMfQnaihviWvdFUeRt/JkdYy+Y3QJAGl4PNUc6RnfEErmUWSl1swFN5ypS\ntrdTHgCSkWIf5XhUB+Sh2Hy5wubGutk6ev8puXAE1FFjkBTtgAlny1WzmQJASOJY\ntr4vVXTKLO6LJhaf1G+KG+LldpUGvFSpC99Am2rTxCy7VI73RjPbdTOq/5KsNPQ3\n5lTgBrnzWDwoUoDmUQJBAOazBxT6MKLofCdpTLqsYPtRlpqx110ksnyvBCV16tRl\nxK/n6oo//QYxmKDUtmQRMU4JPDcR9ppqr/KiU/NP7Vg=\n-----END RSA PRIVATE KEY-----'
+PUBLIC_KEY = b'-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQD34AJOnZfW5qkM6EOZDYfi8Iac\n53GZ6gF5UaHzTv7UoWT2ViMU2QJd/nPfuO9pURedGZeGwLlX2tyweIHGcYS/Xrvx\nqxh6HcdQeMm/99FlzFA2rvXFp+N3FftkJaq3LrB29WNGLiMb/j/JZMI9PvuvwI9C\nL4oLWQaNXiyeghDQxwIDAQAB\n-----END PUBLIC KEY-----'
 
 def sign(message):
     digest = SHA256.new()
     digest.update(json.dumps(message).encode('utf-8')) 
     signer = PKCS1_v1_5.new(RSA.importKey(PRIVATE_KEY))
-    return  signer.sign(digest).hex()
+    return signer.sign(digest).hex()
 
 def run_playbook_1(node):
     logging.info("node ID = {}".format(node.id))
@@ -25,14 +26,14 @@ def run_playbook_1(node):
 
 def run_playbook_2(node):
     for peer_name in ['A', 'B', 'C', 'D', 'E']:
-        peer = Peer(peer_name, '-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQClSjxTeqLzsnDiZk6KmRFR6keT\nA3eyQbRxYAy6hgbXADv7qq5NlVFL2x83x+zAAI+FnHKEK/Kg8q5SqSF/TSaTfPj5\nyN5f/pZFAeeRbkzIWQX/w1Ho5vIkq3oDbTv4ZCuSiXj7V6S8zqdTRFL174y1MQP0\nYAIpkQwgoegVGzS+QQIDAQAB\n-----END PUBLIC KEY-----')
+        peer = Peer(peer_name, PUBLIC_KEY)
         node.add_and_broadcast_peer(peer)
 
     for peer_name in ['A', 'B', 'C']:
         raw_message = {
             'newcomer': {
                 'id': 'F',
-                'pubkey': '-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQClSjxTeqLzsnDiZk6KmRFR6keT\nA3eyQbRxYAy6hgbXADv7qq5NlVFL2x83x+zAAI+FnHKEK/Kg8q5SqSF/TSaTfPj5\nyN5f/pZFAeeRbkzIWQX/w1Ho5vIkq3oDbTv4ZCuSiXj7V6S8zqdTRFL174y1MQP0\nYAIpkQwgoegVGzS+QQIDAQAB\n-----END PUBLIC KEY-----'
+                'pubkey': PUBLIC_KEY.decode('utf-8')
             },
             'sender': peer_name,
         }
@@ -43,13 +44,16 @@ def run_playbook_2(node):
             'signature': signature,
         }
         node.on_message_receive(message_from_json(json.dumps(add_member_message)))
+
+        raw_message = {
+            'id': 'XXX',
+            'sender': 'F',
+            'text': 'hey',
+        }
+        signature = sign(raw_message)
         user_message = {
-            'message': {
-                'id': 'XXX',
-                'sender': 'F',
-                'text': 'hey',
-            },
-            'signature': 'e4f95a1a19561402b76bd3a684207cae32d2b18acec30c25dee748452f9c01dbe343cd2ae5c2d48f68c4aa9db82bc35ccb9d935b2d4d159e43fa430e67dc416277735115c26aa55c6842fbd5c1b4b6d1a9aa67501908fb11bae46d3e89dfa80d0b74fe42c1e75c3067378650bce9c6eb5e3d71f6561e6a6aeb9f90e3d4323c6e',
+            'message': raw_message,
+            'signature': signature,
         }
         node.on_message_receive(message_from_json(json.dumps(user_message)))
 
