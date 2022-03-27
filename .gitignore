@@ -3,4 +3,5 @@ app/QR.png
 log.txt
 config.yaml
 *.session
+*.session-journal
 .idea

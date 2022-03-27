@@ -1,0 +1,4 @@
+transports:
+  telegram:
+    phone: +78005553535
+    password: secret
