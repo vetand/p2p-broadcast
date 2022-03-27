@@ -188,7 +188,7 @@ class Node:
             result.append(self.messages[item[0]].text)
         return result
 
-    def get_pubkey(self):
+    def get_pubkey(self) -> RSA.RsaKey:
         f = open(KEY_STORAGE,'r')
         result = RSA.import_key(f.read()).publickey()
         f.close()

@@ -2,7 +2,7 @@ import time
 import hashlib
 import json
 import uuid
-from peer import Peer, peer_from_json, peer_from_dict
+from peer import Peer
 
 class Message:
     def __init__(self, node_id = "", text = ""):
@@ -66,6 +66,6 @@ def message_from_json(json_string) -> (str, object, str):
     if 'known_peers' in data.keys():
         peer_list = []
         for peer in data['known_peers']:
-            peer_list.append(peer_from_dict(peer))
+            peer_list.append(Peer.from_dict(peer))
 
         return ('known_peers', { 'peers': peer_list }, None)
