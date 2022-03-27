@@ -65,15 +65,15 @@ class Node:
     def send_known_peers(self, peer):
         message = known_peers_message(self.known_peers)
         message['known_peers'].append(self.get_peer_info().to_json())
-        self.transport.send_message(self.privkey, peer, message)
+        self.encode_and_send_message(self.privkey, peer, message)
 
     def add_and_broadcast_peer(self, peer):
         message = {
             'newcomer': peer.to_json(),
-            'sender': self.id
+            'sender': self.id,
         }
         for peer_id in self.known_peers.keys():
-            self.transport.send_message(self.privkey, self.known_peers[peer_id].get_peer(), message)
+            self.encode_and_send_message(self.privkey, self.known_peers[peer_id].get_peer(), message)
 
         self.send_known_peers(peer)
         self.add_peer(peer, already_verified=True)
@@ -85,9 +85,20 @@ class Node:
             'sender': self.id,
         }
         for peer_id in self.known_peers.keys():
-            self.transport.send_message(self.privkey, self.known_peers[peer_id].get_peer(), message)
+            self.encode_and_send_message(self.privkey, self.known_peers[peer_id].get_peer(), message)
 
-    def validate_message(self, message) -> bool:
+    def verify_signature(self, message, signature):
+        peer = self.known_peers[message['sender']]
+        digest = SHA256.new()
+        digest.update(json.dumps(message).encode('utf-8'))
+
+        if not peer.pubkey:
+            return False
+
+        verifier = PKCS1_v1_5.new(RSA.import_key(peer.pubkey))
+        return verifier.verify(digest, bytes.fromhex(signature))
+
+    def validate_message(self, message, signature) -> bool:
         if message.sender not in self.known_peers.keys():
             logging.info('Ignore message {} as it came from unknown peer'.format(message.id))
             return False
@@ -96,14 +107,8 @@ class Node:
             logging.info('Ignore message {} as it came from unverified peer'.format(message.id))
             return False
 
-        digest = SHA256.new()
-        digest.update(message.sender.encode('utf-8'))
-        peer = self.known_peers[message.sender]
-        verifier = PKCS1_v1_5.new(RSA.import_key(self.pubkey))
-        verified = verifier.verify(digest, bytes.fromhex(message.signature))
-
-        if not verified:
-            logging.warning('Ignore message {} as unverified signature'.format(message.id))
+        if not self.verify_signature(message, signature):
+            logging.info('Ignore message {} as bad signature'.format(message.id))
             return False
 
         if message.id in self.messages_receipt_time.keys():
@@ -122,18 +127,24 @@ class Node:
 
         # simple user message
         if message[0] == 'message':
-            if self.validate_message(message[1]):
+            if self.validate_message(message[1], message[2]):
                 message = message[1]
                 self.messages_receipt_time[message.id] = time.time()
                 self.messages[message.id] = message
                 self.inspect_messages_store()
         # when new peer is broadcasted by 3 QR-code receivers
         elif message[0] == 'newcomer':
-            message = message[1]
+            message, signature = message[1], message[2]
+
             if not self.known_peers[message['sender']].verified(len(self.known_peers)):
                 logging.warning('Trying to add peer from unverified peer')
                 return
 
+            if not self.verify_signature(message, signature):
+                logging.info('Ignore new peer as bad signature')
+                return False
+
+            peer = Peer(message['sender'], message[''])
             self.add_peer(message['peer'])
         # receive full peer_list from other node
         elif message[0] == 'known_peers':
@@ -161,3 +172,15 @@ class Node:
         result = RSA.import_key(f.read()).publickey()
         f.close()
         return result
+
+    def encode_and_send_message(self, privkey, peer, message):
+        logging.info("Sign and send message {} to peer {}".format(message, peer.id))
+
+        final_message = dict()
+        final_message['message'] = message
+        digest = SHA256.new()
+        digest.update(json.dumps(message).encode('utf-8')) 
+        signer = PKCS1_v1_5.new(RSA.importKey(privkey))
+        final_message['signature'] = signer.sign(digest).hex()
+        raw_message = json.dumps(final_message)
+        self.transport.send_message(raw_message)

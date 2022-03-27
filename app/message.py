@@ -16,8 +16,6 @@ class Message:
         data['id'] = self.id
         data['text'] = self.text
         data['sender'] = self.sender
-        if self.signature:
-            data['signature'] = self.signature
         return json.dumps(data)
 
     def __eq__(self, other):
@@ -32,9 +30,6 @@ class Message:
     def __hash__(self):
         return int(hashlib.md5(self.id.encode()).hexdigest(), 16)
 
-def newcomer_message(peer, pubkey):
-    return json.dumps({ 'newcomer': peer.to_json(), 'sender': pubkey })
-
 def known_peers_message(known_peers):
     peer_list = []
     for peer in known_peers.keys():
@@ -42,27 +37,32 @@ def known_peers_message(known_peers):
 
     return { 'known_peers': peer_list }
 
-def message_from_json(json_string) -> (str, object):
-    data = json.loads(json_string)
+def message_from_json(json_string) -> (str, object, str):
+    signature = None
+    if 'signature' in json.loads(json_string).keys():
+        signature = json.loads(json_string)['signature']
+    data = json.loads(json_string)['message']
 
     if 'text' in data.keys():
         result = Message()
         result.id = data['id']
         result.text = data['text']
         result.sender = data['sender']
-        result.signature = data['signature']
-        return ('message', result)
+        return ('message', result, signature)
 
     if 'newcomer' in data.keys():
-        return ('newcomer', {
-            'peer': peer_from_dict(data['newcomer']),
-            'sender': data['sender'],
-            'signature': data['signature'],
-        })
+        return (
+            'newcomer',
+            {
+                'newcomer': data['newcomer'],
+                'sender': data['sender'],
+            },
+            signature
+        )
 
     if 'known_peers' in data.keys():
         peer_list = []
         for peer in data['known_peers']:
             peer_list.append(peer_from_dict(peer))
 
-        return ('known_peers', { 'peers': peer_list })
+        return ('known_peers', { 'peers': peer_list }, None)
