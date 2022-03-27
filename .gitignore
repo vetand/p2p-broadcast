@@ -1,3 +1,8 @@
 app/__pycache__
 app/QR.png
+log.txt
+config.yaml
+*.session
+*.session-journal
+.idea
 app/key.pem
