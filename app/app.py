@@ -1,52 +1,50 @@
-from flask import Flask, flash, request, redirect, url_for, render_template, send_file
+import asyncio
+
+from fastapi import FastAPI, UploadFile
 from node import Node
 import logging
 from peer import from_qr_code
 from playbook import run_playbook_3
+from fastapi.responses import FileResponse
+from main import main
 
 logging.basicConfig(level=logging.INFO)
 filename = 'QR.png'
 
 node = Node()
-app = Flask(__name__)
+app = FastAPI()
 
-@app.route('/playbook')
+@app.on_event("startup")
+async def startup_event():
+    asyncio.ensure_future(main(), loop=asyncio.get_running_loop())
+
+@app.get('/playbook')
 def playbook():
     run_playbook_3(node)
     return 'OK! Watch server logs'
 
-@app.route('/get-peer')
+@app.get('/get-peer')
 def get_peer():
     global node
     node.send_qr(filename)
-    return send_file(filename, mimetype='image/png')
+    return FileResponse(filename, media_type='image/png')
 
-@app.route('/add-peer', methods = ['GET', 'POST'])
-def add_peer():
-    if request.method == 'POST':
-        global node
-
-        file = request.files[filename]
-        file.save(filename)
-        node.add_and_broadcast_peer(from_qr_code(filename))
-        for peer in node.known_peers:
-            logging.info(peer.id)
-        return 'OK'
-
-    return 'NOT OK'
-
-@app.route('/get-messages')
-def get_messages():
+@app.post('/add-peer')
+def add_peer(file: UploadFile):
     global node
+    node.add_and_broadcast_peer(from_qr_code(file.filename))
+    for peer in node.known_peers:
+        logging.info(peer.id)
+    return 'OK'
 
-    size = request.args.get('size')
+@app.get('/get-messages')
+def get_messages(size: int):
+    global node
     messages = node.get_recent_messages(size)
     return str(messages)
 
-@app.route('/broadcast-message', methods = ['POST'])
-def broadcast_message():
+@app.post('/broadcast-message')
+def broadcast_message(text: str):
     global node
-
-    text = request.args.get('text')
     node.broadcast_message(text)
     return 'OK'
