@@ -103,8 +103,6 @@ class Node:
         except Exception as e:
             pass
 
-        print("----------------", message, pubkey)
-
         verifier = PKCS1_v1_5.new(RSA.import_key(pubkey))
         return verifier.verify(digest, bytes.fromhex(signature))
 

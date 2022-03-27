@@ -41,7 +41,10 @@ def message_from_json(json_string) -> (str, object, str):
     signature = None
     if 'signature' in json.loads(json_string).keys():
         signature = json.loads(json_string)['signature']
-    data = json.loads(json_string)['message']
+    if 'message' in json.loads(json_string).keys():
+        data = json.loads(json_string)['message']
+    else:
+        data = json.loads(json_string)
 
     if 'text' in data.keys():
         result = Message()

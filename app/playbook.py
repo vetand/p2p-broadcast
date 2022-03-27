@@ -47,8 +47,8 @@ def run_playbook_2(node):
 
         raw_message = {
             'id': 'XXX',
-            'sender': 'F',
             'text': 'hey',
+            'sender': 'F',
         }
         signature = sign(raw_message)
         user_message = {
