@@ -1,4 +1,8 @@
+import json
 import logging
+from Crypto.Hash import SHA256
+from Crypto.Signature import PKCS1_v1_5
+from Crypto.PublicKey import RSA
 
 class EastablishTransportError(Exception):
     pass
@@ -16,4 +20,3 @@ class Transport:
 
     def send_message(self, peer, message):
         logging.info("Send message {} to peer {}".format(message, peer.id))
-        pass

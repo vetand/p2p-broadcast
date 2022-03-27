@@ -5,3 +5,4 @@ config.yaml
 *.session
 *.session-journal
 .idea
+app/key.pem

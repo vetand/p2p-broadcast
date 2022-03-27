@@ -2,7 +2,7 @@ from flask import Flask, flash, request, redirect, url_for, render_template, sen
 from node import Node
 import logging
 from peer import from_qr_code
-from playbook import run_playbook_1
+from playbook import run_playbook_3
 
 logging.basicConfig(level=logging.INFO)
 filename = 'QR.png'
@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 @app.route('/playbook')
 def playbook():
-    run_playbook_1(node)
+    run_playbook_3(node)
     return 'OK! Watch server logs'
 
 @app.route('/get-peer')
