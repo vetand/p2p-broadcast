@@ -13,7 +13,7 @@ class Peer:
     def to_json(self):
         data = dict()
         data['id'] = self.id
-        data['pubkey'] = self.pubkey
+        data['pubkey'] = str(self.pubkey)
         return json.dumps(data)
 
     def make_qr_code(self, filename = "QR.png"):

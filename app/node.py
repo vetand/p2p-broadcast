@@ -1,14 +1,18 @@
+import os.path
 import json
 import logging
 import time
-import rsa
 import uuid
 
+from Crypto.Hash import SHA256
+from Crypto.Signature import PKCS1_v1_5
+from Crypto.PublicKey import RSA
 from peer import Peer
 from message import Message, message_from_json, known_peers_message
 from transport import Transport
 
 MAX_CACHE_MESSAGES = 10
+KEY_STORAGE = 'key.pem'
 
 class PeersInfo:
     def __init__(self, peer_id, pubkey):
@@ -28,7 +32,18 @@ class PeersInfo:
 class Node:
     def __init__(self):
         self.id = str(uuid.uuid4())
-        (self.pubkey, self.privkey) = rsa.newkeys(512)
+
+        if not os.path.exists(KEY_STORAGE):
+            key = RSA.generate(1024, random_generator)
+            f = open(KEY_STORAGE,'wb')
+            f.write(key.export_key('PEM'))
+            f.close()
+        else:
+            encoded_key = open(KEY_STORAGE, "rb").read()
+            key = RSA.import_key(encoded_key)   
+
+        self.pubkey = key.publickey().export_key()
+        self.privkey = key.export_key()
 
         self.known_peers = dict()
 
@@ -50,20 +65,27 @@ class Node:
     def send_known_peers(self, peer):
         message = known_peers_message(self.known_peers)
         message['known_peers'].append(self.get_peer_info().to_json())
-        self.transport.send_message(peer, json.dumps(message))
+        self.transport.send_message(self.privkey, peer, message)
 
     def add_and_broadcast_peer(self, peer):
-        message = json.dumps({ 'newcomer': peer.to_json(), 'sender': self.id })
+        message = {
+            'newcomer': peer.to_json(),
+            'sender': self.id
+        }
         for peer_id in self.known_peers.keys():
-            self.transport.send_message(self.known_peers[peer_id].get_peer(), message)
+            self.transport.send_message(self.privkey, self.known_peers[peer_id].get_peer(), message)
 
         self.send_known_peers(peer)
         self.add_peer(peer, already_verified=True)
 
     def broadcast_message(self, text):
-        message = json.dumps({ 'id': str(uuid.uuid4()), 'text': text, 'sender': self.id })
+        message = {
+            'id': str(uuid.uuid4()),
+            'text': text,
+            'sender': self.id,
+        }
         for peer_id in self.known_peers.keys():
-            self.transport.send_message(self.known_peers[peer_id].get_peer(), message)
+            self.transport.send_message(self.privkey, self.known_peers[peer_id].get_peer(), message)
 
     def validate_message(self, message) -> bool:
         if message.sender not in self.known_peers.keys():
@@ -72,6 +94,16 @@ class Node:
 
         if not self.known_peers[message.sender].verified(len(self.known_peers)):
             logging.info('Ignore message {} as it came from unverified peer'.format(message.id))
+            return False
+
+        digest = SHA256.new()
+        digest.update(message.sender.encode('utf-8'))
+        peer = self.known_peers[message.sender]
+        verifier = PKCS1_v1_5.new(RSA.import_key(self.pubkey))
+        verified = verifier.verify(digest, bytes.fromhex(message.signature))
+
+        if not verified:
+            logging.warning('Ignore message {} as unverified signature'.format(message.id))
             return False
 
         if message.id in self.messages_receipt_time.keys():
@@ -110,7 +142,7 @@ class Node:
                 self.add_peer(peer, already_verified=True)
 
     def get_peer_info(self) -> Peer:
-        return Peer(self.id, { 'n': self.pubkey['n'], 'e': self.pubkey['e'] })
+        return Peer(self.id, self.get_pubkey())
 
     def send_qr(self, filename = "QR.png"):
         self.get_peer_info().make_qr_code(filename)
@@ -122,4 +154,10 @@ class Node:
             if len(result) == size:
                 break
             result.append(self.messages[item[0]].text)
+        return result
+
+    def get_pubkey(self):
+        f = open(KEY_STORAGE,'r')
+        result = RSA.import_key(f.read()).publickey()
+        f.close()
         return result

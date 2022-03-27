@@ -16,6 +16,8 @@ class Message:
         data['id'] = self.id
         data['text'] = self.text
         data['sender'] = self.sender
+        if self.signature:
+            data['signature'] = self.signature
         return json.dumps(data)
 
     def __eq__(self, other):
@@ -30,8 +32,8 @@ class Message:
     def __hash__(self):
         return int(hashlib.md5(self.id.encode()).hexdigest(), 16)
 
-def newcomer_message(peer, current_node_id):
-    return json.dumps({ 'newcomer': peer.to_json(), 'sender': current_node_id })
+def newcomer_message(peer, pubkey):
+    return json.dumps({ 'newcomer': peer.to_json(), 'sender': pubkey })
 
 def known_peers_message(known_peers):
     peer_list = []
@@ -48,10 +50,15 @@ def message_from_json(json_string) -> (str, object):
         result.id = data['id']
         result.text = data['text']
         result.sender = data['sender']
+        result.signature = data['signature']
         return ('message', result)
 
     if 'newcomer' in data.keys():
-        return ('newcomer', { 'peer': peer_from_dict(data['newcomer']), 'sender': data['sender'] })
+        return ('newcomer', {
+            'peer': peer_from_dict(data['newcomer']),
+            'sender': data['sender'],
+            'signature': data['signature'],
+        })
 
     if 'known_peers' in data.keys():
         peer_list = []
