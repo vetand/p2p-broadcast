@@ -52,6 +52,30 @@
 				"header": []
 			},
 			"response": []
+		},
+		{
+			"name": "Broadcast message",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "localhost:5000/broadcast-message?text=keks",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"broadcast-message"
+					],
+					"query": [
+						{
+							"key": "text",
+							"value": "keks"
+						}
+					]
+				}
+			},
+			"response": []
 		}
 	]
 }

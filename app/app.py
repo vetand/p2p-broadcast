@@ -2,7 +2,7 @@ from flask import Flask, flash, request, redirect, url_for, render_template, sen
 from node import Node
 import logging
 from peer import from_qr_code
-from playbook import run_playbook
+from playbook import run_playbook_1
 
 logging.basicConfig(level=logging.INFO)
 filename = 'QR.png'
@@ -10,16 +10,16 @@ filename = 'QR.png'
 node = Node()
 app = Flask(__name__)
 
+@app.route('/playbook')
+def playbook():
+    run_playbook_1(node)
+    return 'OK! Watch server logs'
+
 @app.route('/get-peer')
 def get_peer():
     global node
     node.send_qr(filename)
     return send_file(filename, mimetype='image/png')
-
-@app.route('/playbook')
-def playbook():
-    run_playbook(node)
-    return 'OK! Watch server logs'
 
 @app.route('/add-peer', methods = ['GET', 'POST'])
 def add_peer():
@@ -28,9 +28,9 @@ def add_peer():
 
         file = request.files[filename]
         file.save(filename)
-        node.add_peer(from_qr_code(filename))
+        node.add_and_broadcast_peer(from_qr_code(filename))
         for peer in node.known_peers:
-            logging.info(peer.id())
+            logging.info(peer.id)
         return 'OK'
 
     return 'NOT OK'
@@ -42,3 +42,11 @@ def get_messages():
     size = request.args.get('size')
     messages = node.get_recent_messages(size)
     return str(messages)
+
+@app.route('/broadcast-message', methods = ['POST'])
+def broadcast_message():
+    global node
+
+    text = request.args.get('text')
+    node.broadcast_message(text)
+    return 'OK'

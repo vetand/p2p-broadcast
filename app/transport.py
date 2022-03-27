@@ -6,5 +6,5 @@ class Transport:
         pass
 
     def send_message(self, peer, message):
-        logging.info("Send message {} to peer {}".format(message.id, peer.id()))
+        logging.info("Send message {} to peer {}".format(message, peer.id))
         pass
