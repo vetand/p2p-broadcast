@@ -65,7 +65,7 @@ def run_playbook_1():
     loop.run_until_complete(coroutine)
 
     assert nodeA.get_recent_messages(10) == ['biba2']
-    assert nodeB.get_recent_messages(10) == ['biba','biba2']
+    assert nodeB.get_recent_messages(10) == ['biba2', 'biba']
     assert nodeC.get_recent_messages(10) == ['biba']
 
 def run_playbook_2():
@@ -97,4 +97,4 @@ def run_playbook_2():
     for key in keys:
         assert correct_messages[key][-8:][::-1] == nodes[key].get_recent_messages(8)
 
-run_playbook_2()
+run_playbook_1()
