@@ -31,7 +31,7 @@ async def main(node: Node, console_mode=False):
     for creator in transport_creators:
         if creator in config["transports"]:
             transport = (transport_creators[creator])(config["transports"])
-            transport.set_on_message(on_message)
+            transport.set_on_message(node.on_message_receive)
             await transport.establish()
             transports.append(transport)
             node.add_transport(transport)
