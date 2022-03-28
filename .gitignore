@@ -9,3 +9,4 @@ key.pem
 .idea
 app/key.pem
 app/aes.txt
+app/logs.txt
