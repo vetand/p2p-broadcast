@@ -1,7 +1,6 @@
 from transport import Transport, EastablishTransportError
 import logging
 import json
-from message import message_from_json
 from telethon import TelegramClient, events
 from telethon.tl.types import *
 from telethon.tl.types.phone import *
@@ -12,6 +11,7 @@ from telethon.errors.rpcerrorlist import SessionPasswordNeededError
 
 API_ID = 10534
 API_HASH = "844584f2b1fd2daecee726166dcc1ef8"
+
 
 class TelegramTransport(Transport):
 
@@ -33,7 +33,7 @@ class TelegramTransport(Transport):
             await self.client.send_message(str(peer.transports['telegram']["phone"]), json.dumps(wrapped_message))
             return True
         return False
-    
+
     async def on_telegram_message(self, event):
         logging.info("Received message: {}".format(event.raw_text))
         try:
@@ -42,7 +42,7 @@ class TelegramTransport(Transport):
                 return
             if res["protocol"] != "p2p-1.0":
                 return
-            self.on_message(message_from_json(res["payload"]))
+            self.on_message(res["payload"])
         except json.JSONDecodeError:
             return
 

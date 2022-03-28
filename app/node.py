@@ -129,7 +129,8 @@ class Node:
             del self.messages_receipt_time[message_to_exclude[0]]
             del self.messages[message_to_exclude[0]]
 
-    def on_message_receive(self, message):
+    def on_message_receive(self, req: dict):
+        message = message_from_json(req)
         logging.info('Got message {}'.format(message))
 
         # simple user message

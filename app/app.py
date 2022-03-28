@@ -1,12 +1,14 @@
 import asyncio
+import json
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Form
 from node import Node
 import logging
 from peer import from_qr_code
 from playbook import run_playbook_4
 from fastapi.responses import FileResponse
 from main import main
+from peer import Peer
 import nest_asyncio
 
 nest_asyncio.apply()
@@ -31,11 +33,24 @@ async def get_peer():
     node.send_qr(filename)
     return FileResponse(filename, media_type='image/png')
 
+@app.get('/get-json')
+async def get_peer():
+    global node
+    return json.loads(node.get_peer_info().to_json())
+
 @app.post('/add-peer')
 async def add_peer(file: UploadFile = File(...)):
     global node
     contents = await file.read()
     await node.add_and_broadcast_peer(from_qr_code(contents))
+    for key in node.known_peers:
+        logging.info("listing peer {}".format(node.known_peers[key]))
+    return 'OK'
+
+@app.post('/add-json')
+async def add_peer(req: str = Form(...)):
+    global node
+    await node.add_and_broadcast_peer(Peer.from_json(req))
     for key in node.known_peers:
         logging.info("listing peer {}".format(node.known_peers[key]))
     return 'OK'
