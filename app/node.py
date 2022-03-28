@@ -19,15 +19,8 @@ KEY_STORAGE = 'key.pem'
 class PeersInfo:
     def __init__(self, peer_id, pubkey, transports):
         self.peer_id = peer_id
-        self.verifications = 1
         self.pubkey = pubkey
         self.transports = transports
-
-    def verify(self):
-        self.verifications += 1
-
-    def verified(self, system_size):
-        return self.verifications >= 3 or self.verifications >= system_size
 
     def get_peer(self):
         return Peer(self.peer_id, self.pubkey, self.transports)
@@ -62,14 +55,8 @@ class Node:
         self.transports.append(transport)
         self.transports[-1].set_on_message(self.on_message_receive)
 
-    def add_peer(self, peer, already_verified=False):
-        if peer.id in self.known_peers.keys():
-            self.known_peers[peer.id].verify()
-            return
-
+    def add_peer(self, peer):
         self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.transports)
-        if already_verified:
-            self.known_peers[peer.id].verifications = 3
 
     async def send_known_peers(self, peer):
         message = known_peers_message(self.known_peers)
@@ -87,7 +74,7 @@ class Node:
         await asyncio.gather(*awaits)
 
         await self.send_known_peers(peer)
-        self.add_peer(peer, already_verified=True)
+        self.add_peer(peer)
 
     async def broadcast_message(self, text):
         message = {
@@ -120,10 +107,6 @@ class Node:
     def validate_message(self, message, signature) -> bool:
         if message.sender not in self.known_peers.keys():
             logging.info('Ignore message {} as it came from unknown peer'.format(message.id))
-            return False
-
-        if not self.known_peers[message.sender].verified(len(self.known_peers)):
-            logging.info('Ignore message {} as it came from unverified peer'.format(message.id))
             return False
 
         raw_message = {
@@ -160,10 +143,6 @@ class Node:
         elif message[0] == 'newcomer':
             message, signature = message[1], message[2]
 
-            if not self.known_peers[message['sender']].verified(len(self.known_peers)):
-                logging.warning('Trying to add peer from unverified peer')
-                return
-
             if not self.verify_signature(message, signature):
                 logging.info('Ignore new peer as bad signature')
                 return False
@@ -175,7 +154,7 @@ class Node:
         elif message[0] == 'known_peers':
             message = message[1]
             for peer in message['peers']:
-                self.add_peer(peer, already_verified=True)
+                self.add_peer(peer)
 
     def get_peer_info(self) -> Peer:
         infos = dict()
