@@ -28,6 +28,13 @@ class Peer:
         data['transports'] = self.transports
         return json.dumps(data)
 
+    def to_dict(self):
+        data = dict()
+        data['id'] = self.id
+        data['pubkey'] = str(self.pubkey.export_key().decode())
+        data['transports'] = self.transports
+        return data
+
     def make_qr_code(self, filename = "QR.png"):
         image = qrcode.make(self.to_json())
         image.save(filename)

@@ -36,12 +36,27 @@ for id in nodes.keys():
 def run_playbook_1():
     global nodes
     keys = list(nodes.keys())
+    print(keys)
 
     nodeA = nodes[keys[0]]
     nodeB = nodes[keys[1]]
+    nodeC = nodes[keys[2]]
 
     loop = asyncio.get_event_loop()
     coroutine = nodeA.add_and_broadcast_peer(nodeB.get_peer_info())
     loop.run_until_complete(coroutine)
+
+    coroutine = nodeA.add_and_broadcast_peer(nodeC.get_peer_info())
+    loop.run_until_complete(coroutine)
+
+    for peer in nodeA.known_peers.keys():
+        print(nodeA.known_peers[peer].peer_id, end = ' ')
+    print()
+    for peer in nodeB.known_peers.keys():
+        print(nodeB.known_peers[peer].peer_id, end = ' ')
+    print()
+    for peer in nodeC.known_peers.keys():
+        print(nodeC.known_peers[peer].peer_id, end = ' ')
+    print()
 
 run_playbook_1()

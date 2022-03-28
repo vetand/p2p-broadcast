@@ -87,7 +87,7 @@ class Node:
             awaits.append(self.encode_and_send_message(self.privkey, self.known_peers[peer_id].get_peer(), message))
         await asyncio.gather(*awaits)
 
-    def verify_signature(self, message, signature):
+    def verify_signature(self, message, signature):    
         peer = self.known_peers[message['sender']]
         digest = SHA256.new()
         digest.update(json.dumps(message).encode('utf-8'))
@@ -95,13 +95,7 @@ class Node:
         if not peer.pubkey:
             return False
 
-        pubkey = peer.pubkey
-        try:
-            pubkey = pubkey.encode('utf-8')
-        except Exception as e:
-            pass
-
-        verifier = PKCS1_v1_5.new(pubkey)
+        verifier = PKCS1_v1_5.new(peer.pubkey)
         return verifier.verify(digest, bytes.fromhex(signature))
 
     def validate_message(self, message, signature) -> bool:
@@ -129,7 +123,7 @@ class Node:
             del self.messages_receipt_time[message_to_exclude[0]]
             del self.messages[message_to_exclude[0]]
 
-    def on_message_receive(self, req: dict):
+    def on_message_receive(self, req: str):
         message = message_from_json(req)
         logging.info('Got message {}'.format(message))
 
@@ -143,6 +137,8 @@ class Node:
         # when new peer is broadcasted by 3 QR-code receivers
         elif message[0] == 'newcomer':
             message, signature = message[1], message[2]
+            message['newcomer'] = message['newcomer'].to_json()
+            newcomer = json.loads(message['newcomer'])
 
             if not self.verify_signature(message, signature):
                 logging.info('Ignore new peer as bad signature')
