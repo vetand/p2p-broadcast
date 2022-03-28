@@ -36,7 +36,6 @@ for id in nodes.keys():
 def run_playbook_1():
     global nodes
     keys = list(nodes.keys())
-    print(keys)
 
     nodeA = nodes[keys[0]]
     nodeB = nodes[keys[1]]
@@ -49,14 +48,16 @@ def run_playbook_1():
     coroutine = nodeA.add_and_broadcast_peer(nodeC.get_peer_info())
     loop.run_until_complete(coroutine)
 
-    for peer in nodeA.known_peers.keys():
-        print(nodeA.known_peers[peer].peer_id, end = ' ')
-    print()
-    for peer in nodeB.known_peers.keys():
-        print(nodeB.known_peers[peer].peer_id, end = ' ')
-    print()
-    for peer in nodeC.known_peers.keys():
-        print(nodeC.known_peers[peer].peer_id, end = ' ')
-    print()
+    assert len(nodeA.known_peers.keys()) == 2
+    assert len(nodeB.known_peers.keys()) == 2
+    assert len(nodeC.known_peers.keys()) == 2
+
+    coroutine = nodeA.broadcast_message("biba")
+    loop.run_until_complete(coroutine)
+
+    assert nodeA.get_recent_messages(10) == []
+    assert nodeB.get_recent_messages(10) == ['biba']
+    assert nodeC.get_recent_messages(10) == ['biba']
+
 
 run_playbook_1()
