@@ -30,7 +30,7 @@ class TelegramTransport(Transport):
     async def send_message(self, peer, message):
         if peer.transports.get('telegram') is not None:
             wrapped_message = {"protocol": "p2p-1.0", "payload": message}
-            await self.client.send_message(str(peer.transports['telegram']["phone"]), json.dumps(wrapped_message))
+            await self.client.send_message(str(peer.transports['telegram']["phone"]), wrapped_message)
             return True
         return False
 
