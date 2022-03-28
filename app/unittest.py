@@ -59,5 +59,11 @@ def run_playbook_1():
     assert nodeB.get_recent_messages(10) == ['biba']
     assert nodeC.get_recent_messages(10) == ['biba']
 
+    coroutine = nodeC.broadcast_message("biba2")
+    loop.run_until_complete(coroutine)
+
+    assert nodeA.get_recent_messages(10) == ['biba2']
+    assert nodeB.get_recent_messages(10) == ['biba','biba2']
+    assert nodeC.get_recent_messages(10) == ['biba']
 
 run_playbook_1()

@@ -144,7 +144,7 @@ class Node:
                 logging.info('Ignore new peer as bad signature')
                 return False
 
-            peer = Peer(newcomer['id'], newcomer['pubkey'], newcomer['transports'])
+            peer = Peer(newcomer['id'], RSA.import_key(newcomer['pubkey']), newcomer['transports'])
             self.add_peer(peer)
         # receive full peer_list from other node
         elif message[0] == 'known_peers':
