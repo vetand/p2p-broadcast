@@ -15,7 +15,7 @@ pyasn1==0.4.8
 pydantic==1.9.0
 PyYAML==6.0
 pyzbar==0.1.9
-qrcode==7.3.1
+qrcode=7.3.1
 rsa==4.8
 sniffio==1.2.0
 starlette==0.17.1
@@ -23,7 +23,3 @@ Telethon==1.24.0
 typing_extensions==4.1.1
 uvicorn==0.17.6
 Werkzeug==2.0.3
-pycrypto==2.6.1 
-pycryptodome==3.14.1 
-python-multipart==0.0.5
-nest-asyncio==1.5.4 

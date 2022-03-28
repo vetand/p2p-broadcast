@@ -8,10 +8,9 @@ import qrcode
 import io
 
 class Peer:
-    def __init__(self, id, pubkey: RSA.RsaKey, aes_key, transports):
+    def __init__(self, id, pubkey: RSA.RsaKey, transports):
         self.id = id
         self.pubkey = pubkey
-        self.aes_key = aes_key
         self.transports = transports
 
     @staticmethod
@@ -20,12 +19,11 @@ class Peer:
 
     @staticmethod
     def from_dict(d):
-        return Peer(d['id'], RSA.import_key(d['pubkey']), d['aes_key'], d['transports'])
+        return Peer(d['id'], RSA.import_key(d['pubkey']), d['transports'])
 
     def to_json(self):
         data = dict()
         data['id'] = self.id
-        data['aes_key'] = self.aes_key
         data['pubkey'] = str(self.pubkey.export_key().decode())
         data['transports'] = self.transports
         return json.dumps(data)

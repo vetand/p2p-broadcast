@@ -1,32 +1,27 @@
-import os
 import os.path
 import json
 import logging
 import time
 import uuid
 import asyncio
-import base64
 
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
-from Crypto.Cipher import AES
 from peer import Peer
 from message import Message, message_from_json, known_peers_message
 from transport import Transport
 
 MAX_CACHE_MESSAGES = 10
 KEY_STORAGE = 'key.pem'
-AES_KEY_STORAGE = 'aes.txt'
 
 class PeersInfo:
-    def __init__(self, peer_id, pubkey, aes_key, transports):
+    def __init__(self, peer_id, pubkey, transports):
         self.peer_id = peer_id
         self.verifications = 1
         self.pubkey = pubkey
         self.transports = transports
-        self.aes_key = aes_key
 
     def verify(self):
         self.verifications += 1
@@ -35,7 +30,7 @@ class PeersInfo:
         return self.verifications >= 3 or self.verifications >= system_size
 
     def get_peer(self):
-        return Peer(self.peer_id, self.pubkey, self.aes_key, self.transports)
+        return Peer(self.peer_id, self.pubkey, self.transports)
 
 class Node:
     def __init__(self):
@@ -43,7 +38,6 @@ class Node:
 
         if not os.path.exists(KEY_STORAGE):
             key = RSA.generate(1024, get_random_bytes)
-            logging.error(key)
             f = open(KEY_STORAGE,'wb')
             f.write(key.export_key('PEM'))
             f.close()
@@ -53,22 +47,8 @@ class Node:
             f.close()
             key = RSA.import_key(encoded_key)   
 
-        if not os.path.exists(AES_KEY_STORAGE):
-            aes_key = key.export_key()[64:80]
-
-            f = open(AES_KEY_STORAGE,'wb')
-            f.write(aes_key)
-            f.close()
-        else:
-            f = open(AES_KEY_STORAGE, "rb")
-            encoded_key = f.read()
-            f.close()
-            aes_key = encoded_key
-
-        self.aes_key = aes_key.decode('utf-8')
         self.pubkey = key.publickey().export_key()
         self.privkey = key.export_key()
-        logging.info(self.aes_key)
 
         self.known_peers = dict()
 
@@ -80,14 +60,14 @@ class Node:
 
     def add_transport(self, transport):
         self.transports.append(transport)
-        self.transports[-1].set_on_message(self.get_message)
+        self.transports[-1].set_on_message(self.on_message_receive)
 
     def add_peer(self, peer, already_verified=False):
         if peer.id in self.known_peers.keys():
             self.known_peers[peer.id].verify()
             return
 
-        self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.aes_key, peer.transports)
+        self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.transports)
         if already_verified:
             self.known_peers[peer.id].verifications = 3
 
@@ -200,7 +180,7 @@ class Node:
         infos = dict()
         for t in self.transports:
             infos[t.get_name()] = t.get_peer_info()
-        return Peer(self.id, self.get_pubkey(), self.aes_key, infos)
+        return Peer(self.id, self.get_pubkey(), infos)
 
     def send_qr(self, filename = "QR.png"):
         self.get_peer_info().make_qr_code(filename)
@@ -226,20 +206,11 @@ class Node:
         final_message = dict()
         final_message['message'] = message
         digest = SHA256.new()
-        digest.update(json.dumps(message).encode()) 
+        digest.update(json.dumps(message).encode('utf-8')) 
         signer = PKCS1_v1_5.new(RSA.importKey(privkey))
         final_message['signature'] = signer.sign(digest).hex()
         raw_message = json.dumps(final_message)
 
-        cipher = AES.new(peer.aes_key.encode(), AES.MODE_EAX)
-        ciphertext, tag = cipher.encrypt_and_digest(raw_message.encode())
-        ciphertext = base64.b64encode(ciphertext).decode()
-
         for transport in self.transports:
-            if await transport.send_message(peer, ciphertext):
+            if await transport.send_message(peer, raw_message):
                 return
-
-    def get_message(self, encoded_message):
-        cipher = AES.new(self.aes_key.encode(), AES.MODE_EAX)
-        plaintext = cipher.decrypt(encoded_message.encode()).decode()
-        self.on_message_receive(message_from_json(plaintext))
