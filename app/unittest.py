@@ -23,6 +23,7 @@ class TestTransport(Transport):
         }
 
     async def send_message(self, peer, message):
+        message = { 'message': message }
         self.nodes[peer.id].on_message_receive(message)
 
     def get_peer_info(self):

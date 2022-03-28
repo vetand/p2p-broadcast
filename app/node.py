@@ -169,6 +169,7 @@ class Node:
             del self.messages[message_to_exclude[0]]
 
     def on_message_receive(self, req: str):
+        req = req['message']
         cipfer = AESCipher(self.aes_key)
         req = cipfer.decrypt(req)
 
