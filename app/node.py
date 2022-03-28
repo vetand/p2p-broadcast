@@ -5,6 +5,7 @@ import logging
 import time
 import uuid
 import asyncio
+import base64
 
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
@@ -20,11 +21,12 @@ KEY_STORAGE = 'key.pem'
 AES_KEY_STORAGE = 'aes.txt'
 
 class PeersInfo:
-    def __init__(self, peer_id, pubkey, transports):
+    def __init__(self, peer_id, pubkey, aes_key, transports):
         self.peer_id = peer_id
         self.verifications = 1
         self.pubkey = pubkey
         self.transports = transports
+        self.aes_key = aes_key
 
     def verify(self):
         self.verifications += 1
@@ -85,7 +87,7 @@ class Node:
             self.known_peers[peer.id].verify()
             return
 
-        self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.transports)
+        self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.aes_key, peer.transports)
         if already_verified:
             self.known_peers[peer.id].verifications = 3
 
@@ -224,19 +226,20 @@ class Node:
         final_message = dict()
         final_message['message'] = message
         digest = SHA256.new()
-        digest.update(json.dumps(message).encode('utf-8')) 
+        digest.update(json.dumps(message).encode()) 
         signer = PKCS1_v1_5.new(RSA.importKey(privkey))
         final_message['signature'] = signer.sign(digest).hex()
         raw_message = json.dumps(final_message)
 
-        cipher = AES.new(peer.aes_key.encode('utf-8'), AES.MODE_EAX)
-        ciphertext, tag = cipher.encrypt_and_digest(raw_message)
+        cipher = AES.new(peer.aes_key.encode(), AES.MODE_EAX)
+        ciphertext, tag = cipher.encrypt_and_digest(raw_message.encode())
+        ciphertext = base64.b64encode(ciphertext).decode()
 
         for transport in self.transports:
             if await transport.send_message(peer, ciphertext):
                 return
 
     def get_message(self, encoded_message):
-        cipher = AES.new(self.aes_key.encode('utf-8'), AES.MODE_EAX)
-        plaintext = cipher.decrypt(encoded_message)
+        cipher = AES.new(self.aes_key.encode(), AES.MODE_EAX)
+        plaintext = cipher.decrypt(encoded_message.encode()).decode()
         self.on_message_receive(message_from_json(plaintext))
