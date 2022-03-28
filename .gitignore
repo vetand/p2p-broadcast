@@ -8,7 +8,7 @@ key.pem
 *.session-journal
 .idea
 app/key.pem
-app/aes.txt
+aes.txt
 app/logs.txt
 *.jpg
 app/id.txt

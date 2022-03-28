@@ -135,11 +135,55 @@ def test_deny_access():
     assert len(nodeA.known_peers.keys()) == 1
     assert len(nodeB.known_peers.keys()) == 1
 
+def test_qr_count():
+    nodes = create_nodes(5)
+    keys = list(nodes.keys())
+
+    loop = asyncio.get_event_loop()
+    for i in range(4):
+        for j in range(i):
+            loop.run_until_complete(nodes[keys[j]].add_and_broadcast_peer(nodes[keys[i]].get_peer_info()))
+
+    for i in range(4):
+        assert len(nodes[keys[i]].known_peers.keys()) == 3
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(nodes[keys[0]].add_and_broadcast_peer(nodes[keys[4]].get_peer_info()))
+    loop.run_until_complete(nodes[keys[4]].broadcast_message("first_hello"))
+    loop.run_until_complete(nodes[keys[0]].broadcast_message("first_internal_hello"))
+
+    loop.run_until_complete(nodes[keys[1]].add_and_broadcast_peer(nodes[keys[4]].get_peer_info()))
+    loop.run_until_complete(nodes[keys[4]].broadcast_message("second_hello"))
+    loop.run_until_complete(nodes[keys[0]].broadcast_message("second_internal_hello"))
+
+    for i in range(4):
+        assert len(nodes[keys[i]].known_peers.keys()) == 3
+
+    loop.run_until_complete(nodes[keys[2]].add_and_broadcast_peer(nodes[keys[4]].get_peer_info()))
+    loop.run_until_complete(nodes[keys[4]].broadcast_message("third_hello"))
+    loop.run_until_complete(nodes[keys[0]].broadcast_message("third_internal_hello"))
+
+    for i in range(5):
+        assert len(nodes[keys[i]].known_peers.keys()) == 4
+
+    loop.run_until_complete(nodes[keys[3]].add_and_broadcast_peer(nodes[keys[4]].get_peer_info()))
+    loop.run_until_complete(nodes[keys[4]].broadcast_message("fourth_hello"))
+    loop.run_until_complete(nodes[keys[0]].broadcast_message("fourth_internal_hello"))
+
+    for i in range(5):
+        assert len(nodes[keys[i]].known_peers.keys()) == 4
+
+    assert nodes[keys[0]].get_recent_messages(10) == ["fourth_hello", "third_hello"]
+    for i in range(1, 4):
+        assert nodes[keys[i]].get_recent_messages(10) == ["fourth_internal_hello", "fourth_hello", "third_internal_hello", "third_hello", "second_internal_hello", "first_internal_hello"]
+    assert nodes[keys[4]].get_recent_messages(10) == ["fourth_internal_hello", "third_internal_hello"]
+
 
 tests = [
     test_3_nodes,
     test_message_order,
     test_deny_access,
+    test_qr_count,
 ]
 
 for test in tests:

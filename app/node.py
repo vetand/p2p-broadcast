@@ -133,6 +133,7 @@ class Node:
     async def send_known_peers(self, peer):
         message = known_peers_message(self.known_peers)
         message['known_peers'].append(self.get_peer_info().to_json())
+        message['sender'] = self.id
         await self.encode_and_send_message(self.privkey, peer, message)
 
     async def add_and_broadcast_peer(self, peer):
@@ -228,9 +229,19 @@ class Node:
             self.add_peer(peer, message['sender'])
         # receive full peer_list from other node
         elif message[0] == 'known_peers':
-            message = message[1]
-            for peer in message['peers']:
-                self.add_peer(peer, None)
+            message, signature = message[1], message[2]
+
+            if len(self.known_peers) != 0:
+                if message['sender'] not in self.known_peers.keys():
+                    logging.info('Ignore message {} as it came from unknown peer'.format(message))
+                    return
+
+                if not self.verify_signature(message, signature):
+                    logging.info('Ignore new peer as bad signature')
+                    return False
+
+            for peer in message['known_peers']:
+                self.add_peer(Peer.from_dict(peer), None)
 
     def get_peer_info(self) -> Peer:
         infos = dict()
