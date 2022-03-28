@@ -147,7 +147,6 @@ class Node:
                 logging.info('Ignore new peer as bad signature')
                 return False
 
-            newcomer = json.loads(message['newcomer'])
             peer = Peer(newcomer['id'], newcomer['pubkey'], newcomer['transports'])
             self.add_peer(peer)
         # receive full peer_list from other node

@@ -57,7 +57,7 @@ def message_from_json(json_string) -> (str, object, str):
         return (
             'newcomer',
             {
-                'newcomer': data['newcomer'],
+                'newcomer': Peer.from_json(data['newcomer']),
                 'sender': data['sender'],
             },
             signature
@@ -66,6 +66,6 @@ def message_from_json(json_string) -> (str, object, str):
     if 'known_peers' in data.keys():
         peer_list = []
         for peer in data['known_peers']:
-            peer_list.append(Peer.from_dict(json.loads(peer)))
+            peer_list.append(Peer.from_json(peer))
 
         return ('known_peers', { 'peers': peer_list }, None)
