@@ -18,6 +18,7 @@ from peer import Peer
 from message import Message, message_from_json, known_peers_message
 from transport import Transport
 from Crypto.Cipher import AES
+from collections import defaultdict
 
 MAX_CACHE_MESSAGES = 10
 KEY_STORAGE = 'key.pem'
@@ -100,6 +101,8 @@ class Node:
         self.aes_key = aes_key
 
         self.known_peers = dict()
+        self.unverified_peers = dict()
+        self.peer_verifications = defaultdict(lambda: set())
 
         # message history info
         self.messages_receipt_time = dict()
@@ -111,8 +114,21 @@ class Node:
         self.transports.append(transport)
         self.transports[-1].set_on_message(self.on_message_receive)
 
-    def add_peer(self, peer):
-        self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.aes_key, peer.transports)
+    def check_peer_verified(self, peer):
+        if self.unverified_peers.get(peer.id) is None:
+            return
+        if len(self.peer_verifications[peer.id]) >= min(3, len(self.known_peers) + 1):
+            self.known_peers[peer.id] = self.unverified_peers[peer.id]
+            del self.peer_verifications[peer.id]
+            del self.unverified_peers[peer.id]
+
+    def add_peer(self, peer, verified_by):
+        if verified_by is None:
+            self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.aes_key, peer.transports)
+        else:
+            self.peer_verifications[peer.id].add(verified_by)
+            self.unverified_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.aes_key, peer.transports)
+            self.check_peer_verified(peer)
 
     async def send_known_peers(self, peer):
         message = known_peers_message(self.known_peers)
@@ -130,7 +146,7 @@ class Node:
         await asyncio.gather(*awaits)
 
         await self.send_known_peers(peer)
-        self.add_peer(peer)
+        self.add_peer(peer, self.id)
 
     async def broadcast_message(self, text):
         message = {
@@ -200,17 +216,21 @@ class Node:
             message['newcomer'] = message['newcomer'].to_json()
             newcomer = json.loads(message['newcomer'])
 
+            if message['sender'] not in self.known_peers.keys():
+                logging.info('Ignore message {} as it came from unknown peer'.format(message))
+                return
+
             if not self.verify_signature(message, signature):
                 logging.info('Ignore new peer as bad signature')
                 return False
 
             peer = Peer(newcomer['id'], RSA.import_key(newcomer['pubkey']), newcomer['aes_key'], newcomer['transports'])
-            self.add_peer(peer)
+            self.add_peer(peer, message['sender'])
         # receive full peer_list from other node
         elif message[0] == 'known_peers':
             message = message[1]
             for peer in message['peers']:
-                self.add_peer(peer)
+                self.add_peer(peer, None)
 
     def get_peer_info(self) -> Peer:
         infos = dict()
