@@ -18,6 +18,7 @@ class TestTransport(Transport):
         }
 
     async def send_message(self, peer, message):
+        message = { 'message': message }
         self.nodes[peer.id].on_message_receive(message)
 
     def get_peer_info(self):
@@ -102,7 +103,6 @@ def test_message_order():
 
     for key in keys:
         assert correct_messages[key][-8:][::-1] == nodes[key].get_recent_messages(8)
-
 
 tests = [
     test_3_nodes,
