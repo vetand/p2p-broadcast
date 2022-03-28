@@ -7,11 +7,6 @@ from message import message_from_json
 import random
 import string
 
-nodes = dict()
-
-for i in range(5):
-    node = Node()
-    nodes[node.id] = node
 
 class TestTransport(Transport):
     def __init__(self, nodes):
@@ -31,12 +26,23 @@ class TestTransport(Transport):
     def get_name(self):
         return "testing"
 
-transport = TestTransport(nodes)
-for id in nodes.keys():
-    nodes[id].add_transport(transport)
 
-def run_playbook_1():
-    global nodes
+def create_nodes(node_count):
+    nodes = dict()
+
+    for i in range(node_count):
+        node = Node()
+        nodes[node.id] = node
+
+    transport = TestTransport(nodes)
+    for id in nodes.keys():
+        nodes[id].add_transport(transport)
+
+    return nodes
+
+
+def test_3_nodes():
+    nodes = create_nodes(5)
     keys = list(nodes.keys())
 
     nodeA = nodes[keys[0]]
@@ -65,11 +71,11 @@ def run_playbook_1():
     loop.run_until_complete(coroutine)
 
     assert nodeA.get_recent_messages(10) == ['biba2']
-    assert nodeB.get_recent_messages(10) == ['biba','biba2']
+    assert nodeB.get_recent_messages(10) == ['biba2','biba']
     assert nodeC.get_recent_messages(10) == ['biba']
 
-def run_playbook_2():
-    global nodes
+def test_message_order():
+    nodes = create_nodes(7)
     keys = list(nodes.keys())
 
     loop = asyncio.get_event_loop()
@@ -80,7 +86,7 @@ def run_playbook_2():
 
     random.seed(123)
     messages = []
-    for i in range(100):
+    for i in range(40):
         messages.append(''.join(random.choice(string.ascii_lowercase) for _ in range(4)))
 
     correct_messages = dict()
@@ -97,4 +103,12 @@ def run_playbook_2():
     for key in keys:
         assert correct_messages[key][-8:][::-1] == nodes[key].get_recent_messages(8)
 
-run_playbook_2()
+
+tests = [
+    test_3_nodes,
+    test_message_order,
+]
+
+for test in tests:
+    print("Running test {}".format(test.__name__))
+    test()
