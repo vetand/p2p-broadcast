@@ -167,8 +167,9 @@ class Node:
             if not self.verify_signature(message, signature):
                 logging.info('Ignore new peer as bad signature')
                 return False
- 
-            peer = Peer(message['newcomer']['id'], message['newcomer']['pubkey'])
+
+            newcomer = json.loads(message['newcomer'])
+            peer = Peer(newcomer['id'], newcomer['pubkey'], newcomer['transports'])
             self.add_peer(peer)
         # receive full peer_list from other node
         elif message[0] == 'known_peers':
