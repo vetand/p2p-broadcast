@@ -12,3 +12,4 @@ app/aes.txt
 app/logs.txt
 *.jpg
 app/id.txt
+app/peers.json
