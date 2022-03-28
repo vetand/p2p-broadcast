@@ -41,6 +41,7 @@ class Node:
 
         if not os.path.exists(KEY_STORAGE):
             key = RSA.generate(1024, get_random_bytes)
+            logging.error(key)
             f = open(KEY_STORAGE,'wb')
             f.write(key.export_key('PEM'))
             f.close()
@@ -51,7 +52,7 @@ class Node:
             key = RSA.import_key(encoded_key)   
 
         if not os.path.exists(AES_KEY_STORAGE):
-            aes_key = os.urandom(16)
+            aes_key = key.export_key()[64:80]
 
             f = open(AES_KEY_STORAGE,'wb')
             f.write(aes_key)
@@ -62,7 +63,7 @@ class Node:
             f.close()
             aes_key = encoded_key
 
-        self.aes_key = aes_key
+        self.aes_key = aes_key.decode('utf-8')
         self.pubkey = key.publickey().export_key()
         self.privkey = key.export_key()
         logging.info(self.aes_key)
@@ -228,7 +229,7 @@ class Node:
         final_message['signature'] = signer.sign(digest).hex()
         raw_message = json.dumps(final_message)
 
-        cipher = AES.new(peer.aes_key, AES.MODE_EAX)
+        cipher = AES.new(peer.aes_key.encode('utf-8'), AES.MODE_EAX)
         ciphertext, tag = cipher.encrypt_and_digest(raw_message)
 
         for transport in self.transports:
@@ -236,7 +237,6 @@ class Node:
                 return
 
     def get_message(self, encoded_message):
-        key = b'Sixteen byte key'
-        cipher = AES.new(self.aes_key, AES.MODE_EAX)
+        cipher = AES.new(self.aes_key.encode('utf-8'), AES.MODE_EAX)
         plaintext = cipher.decrypt(encoded_message)
         self.on_message_receive(message_from_json(plaintext))
