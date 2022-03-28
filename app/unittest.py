@@ -6,6 +6,7 @@ from node import Node
 from message import message_from_json
 import random
 import string
+import uuid
 
 
 class TestTransport(Transport):
@@ -33,6 +34,7 @@ def create_nodes(node_count):
 
     for i in range(node_count):
         node = Node()
+        node.id = str(uuid.uuid4())
         nodes[node.id] = node
 
     transport = TestTransport(nodes)

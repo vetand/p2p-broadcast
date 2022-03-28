@@ -11,3 +11,4 @@ app/key.pem
 app/aes.txt
 app/logs.txt
 *.jpg
+app/id.txt

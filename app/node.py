@@ -22,6 +22,7 @@ from Crypto.Cipher import AES
 MAX_CACHE_MESSAGES = 10
 KEY_STORAGE = 'key.pem'
 AES_KEY_STORAGE = 'aes.txt'
+ID_STORAGE = 'id.txt'
 
 class AESCipher(object):
     def __init__(self, key): 
@@ -60,6 +61,16 @@ class PeersInfo:
 class Node:
     def __init__(self):
         self.id = str(uuid.uuid4())
+
+        if not os.path.exists(ID_STORAGE):
+            self.id = str(uuid.uuid4())
+            f = open(ID_STORAGE,'wb')
+            f.write(self.id.encode())
+            f.close()
+        else:
+            f = open(ID_STORAGE, "rb")
+            self.id = f.read().decode()
+            f.close()
 
         if not os.path.exists(KEY_STORAGE):
             key = RSA.generate(1024, get_random_bytes)
