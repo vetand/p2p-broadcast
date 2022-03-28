@@ -3,6 +3,7 @@ import json
 import logging
 import time
 import uuid
+import asyncio
 
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
@@ -69,20 +70,22 @@ class Node:
         if already_verified:
             self.known_peers[peer.id].verifications = 3
 
-    def send_known_peers(self, peer):
+    async def send_known_peers(self, peer):
         message = known_peers_message(self.known_peers)
         message['known_peers'].append(self.get_peer_info().to_json())
-        self.encode_and_send_message(self.privkey, peer, message)
+        await self.encode_and_send_message(self.privkey, peer, message)
 
-    def add_and_broadcast_peer(self, peer):
+    async def add_and_broadcast_peer(self, peer):
         message = {
             'newcomer': peer.to_json(),
             'sender': self.id,
         }
+        awaits = []
         for peer_id in self.known_peers.keys():
-            self.encode_and_send_message(self.privkey, self.known_peers[peer_id].get_peer(), message)
+            awaits.append(self.encode_and_send_message(self.privkey, self.known_peers[peer_id].get_peer(), message))
+        await asyncio.gather(*awaits)
 
-        self.send_known_peers(peer)
+        await self.send_known_peers(peer)
         self.add_peer(peer, already_verified=True)
 
     async def broadcast_message(self, text):
