@@ -164,7 +164,7 @@ class Node:
     def get_recent_messages(self, size):
         size = int(size)
         result = []
-        for item in sorted(self.messages_receipt_time.items())[::-1]:
+        for item in sorted(self.messages_receipt_time.items(), key = lambda x: x[1])[::-1]:
             if len(result) == size:
                 break
             result.append(self.messages[item[0]].text)

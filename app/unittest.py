@@ -4,6 +4,8 @@ import json
 import asyncio
 from node import Node
 from message import message_from_json
+import random
+import string
 
 nodes = dict()
 
@@ -66,4 +68,33 @@ def run_playbook_1():
     assert nodeB.get_recent_messages(10) == ['biba','biba2']
     assert nodeC.get_recent_messages(10) == ['biba']
 
-run_playbook_1()
+def run_playbook_2():
+    global nodes
+    keys = list(nodes.keys())
+
+    loop = asyncio.get_event_loop()
+    for i in range(1, len(keys)):
+        loop.run_until_complete(nodes[keys[i - 1]].add_and_broadcast_peer(nodes[keys[i]].get_peer_info()))
+    for node in nodes.values():
+        assert len(node.known_peers.keys()) == len(nodes) - 1
+
+    random.seed(123)
+    messages = []
+    for i in range(100):
+        messages.append(''.join(random.choice(string.ascii_lowercase) for _ in range(4)))
+
+    correct_messages = dict()
+    for key in keys:
+        correct_messages[key] = []
+
+    for message in messages:
+        current = random.choice(keys)
+        for key in keys:
+            if key != current:
+                correct_messages[key].append(message)
+        loop.run_until_complete(nodes[current].broadcast_message(message))
+
+    for key in keys:
+        assert correct_messages[key][-8:][::-1] == nodes[key].get_recent_messages(8)
+
+run_playbook_2()
