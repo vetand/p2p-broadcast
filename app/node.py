@@ -114,7 +114,7 @@ class Node:
         except Exception as e:
             pass
 
-        verifier = PKCS1_v1_5.new(RSA.import_key(pubkey))
+        verifier = PKCS1_v1_5.new(pubkey)
         return verifier.verify(digest, bytes.fromhex(signature))
 
     def validate_message(self, message, signature) -> bool:
