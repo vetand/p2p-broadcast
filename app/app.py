@@ -4,10 +4,12 @@ from fastapi import FastAPI, File, UploadFile
 from node import Node
 import logging
 from peer import from_qr_code
-from playbook import run_playbook_3
+from playbook import run_playbook_4
 from fastapi.responses import FileResponse
 from main import main
+import nest_asyncio
 
+nest_asyncio.apply()
 logging.basicConfig(level=logging.INFO)
 filename = 'QR.png'
 
@@ -20,7 +22,7 @@ async def startup_event():
 
 @app.get('/playbook')
 async def playbook():
-    run_playbook_3(node)
+    run_playbook_4(node)
     return 'OK! Watch server logs'
 
 @app.get('/get-peer')

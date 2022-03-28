@@ -1,6 +1,7 @@
 from transport import Transport, EastablishTransportError
 import logging
 import json
+from message import message_from_json
 from telethon import TelegramClient, events
 from telethon.tl.types import *
 from telethon.tl.types.phone import *
@@ -41,7 +42,7 @@ class TelegramTransport(Transport):
                 return
             if res["protocol"] != "p2p-1.0":
                 return
-            self.on_message(json.loads(res["payload"]))
+            self.on_message(message_from_json(json.loads(res["payload"])))
         except json.JSONDecodeError:
             return
 

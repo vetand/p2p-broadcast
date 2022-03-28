@@ -86,7 +86,7 @@ def run_playbook_3(node):
     node.broadcast_message('kek')
 
 
-def test_telegram_transport():
+def run_playbook_4(dummy_param):
     telegram_transport = TelegramTransport.create_from_config(yaml.safe_load(open("config.yaml", "r"))["transports"])
     asyncio.get_event_loop().run_until_complete(telegram_transport.establish())
     n1 = Node()

@@ -60,6 +60,7 @@ class Node:
 
     def add_transport(self, transport):
         self.transports.append(transport)
+        self.transports[-1].set_on_message(self.on_message_receive)
 
     def add_peer(self, peer, already_verified=False):
         if peer.id in self.known_peers.keys():
