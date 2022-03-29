@@ -28,8 +28,8 @@ class TCPTransport(Transport):
             writer.close()
             await writer.wait_closed()
             return True
-        except:
-            logging.info("Could not send with TCP")
+        except Exception as e:
+            logging.error("Could not send with TCP", e)
             return False
 
     async def on_tcp_message(self, reader, writer):
