@@ -9,9 +9,7 @@ from playbook import run_playbook_4
 from fastapi.responses import FileResponse
 from main import main
 from peer import Peer
-import nest_asyncio
 
-nest_asyncio.apply()
 logging.basicConfig(level=logging.INFO)
 filename = 'QR.png'
 
