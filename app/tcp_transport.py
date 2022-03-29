@@ -41,7 +41,7 @@ class TCPTransport(Transport):
             return
         if res["protocol"] != "p2p-1.0":
             return
-        self.on_message(json.loads(res["payload"]))
+        self.on_message(res["payload"])
 
     def get_peer_info(self):
         return {"host": self.config["host"], "port": self.config["port"]}
