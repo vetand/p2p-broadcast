@@ -36,19 +36,12 @@ class TCPTransport(Transport):
     async def on_tcp_message(self, reader, writer):
         msg = (await reader.read()).decode().strip()
         logging.info("Received message {} from {}".format(msg, writer.get_extra_info("peername")))
-        try:
-            res = json.loads(msg)
-            if not "protocol" in res or not "payload" in res:
-                return
-            if res["protocol"] != "p2p-1.0":
-                return
-            self.on_message(json.loads(res["payload"]))
-        except json.JSONDecodeError:
-            logging.info("JSON error")
+        res = json.loads(msg)
+        if not "protocol" in res or not "payload" in res:
             return
-        except:
-            logging.info("Strange message")
+        if res["protocol"] != "p2p-1.0":
             return
+        self.on_message(json.loads(res["payload"]))
 
     def get_peer_info(self):
         return {"host": self.config["host"], "port": self.config["port"]}
