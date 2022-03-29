@@ -33,6 +33,8 @@ class TCPTransport(Transport):
             except Exception as e:
                 logging.error("Could not send with TCP", e)
                 return False
+        else:
+            return False
 
     async def on_tcp_message(self, reader, writer):
         msg = (await reader.read()).decode().strip()
