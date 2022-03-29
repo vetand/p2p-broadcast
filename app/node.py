@@ -322,3 +322,5 @@ class Node:
         for transport in self.transports:
             if await transport.send_message(peer, raw_message):
                 return
+
+        logging.info("Couldn't send message to peer {}, available transports: {}".format(peer.id, list(t.get_name() for t in self.transports)))
