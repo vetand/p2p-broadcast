@@ -55,7 +55,7 @@ class TCPTransport(Transport):
     async def establish(self):
         logging.info("Starting up a TCP server...")
         self.server = await asyncio.start_server(
-            self.on_tcp_message, self.config["host"], self.config["port"])
+            self.on_tcp_message, "0.0.0.0", self.config["port"])
         logging.info("TCP server started!")
 
     def get_name(self):
