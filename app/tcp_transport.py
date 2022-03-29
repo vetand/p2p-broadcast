@@ -22,7 +22,7 @@ class TCPTransport(Transport):
         try:
             wrapped_message = {"protocol": "p2p-1.0", "payload": message}
             reader, writer = await asyncio.open_connection(
-                peer.transports['tcp']["host"], eer.transports['tcp']["port"])
+                peer.transports['tcp']["host"], peer.transports['tcp']["port"])
             writer.write(json.dumps(wrapped_message).encode())
             await writer.drain()
             writer.close()
