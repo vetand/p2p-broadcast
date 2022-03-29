@@ -11,4 +11,6 @@ app/key.pem
 aes.txt
 app/logs.txt
 *.jpg
+app/id.txt
+app/peers.json
 id.txt

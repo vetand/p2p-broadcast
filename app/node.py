@@ -24,6 +24,7 @@ MAX_CACHE_MESSAGES = 10
 KEY_STORAGE = 'key.pem'
 AES_KEY_STORAGE = 'aes.txt'
 ID_STORAGE = 'id.txt'
+PEERS_STORAGE = 'peers.json'
 
 class AESCipher(object):
     def __init__(self, key): 
@@ -58,6 +59,17 @@ class PeersInfo:
 
     def get_peer(self):
         return Peer(self.peer_id, self.pubkey, self.aes_key, self.transports)
+
+    def to_dict(self):
+        return {
+            'peer_id': self.peer_id,
+            'pubkey': self.pubkey.export_key().decode(),
+            'aes_key': self.aes_key,
+            'transports': self.transports,
+        }
+
+def peers_info_from_dict(info):
+    return PeersInfo(info['peer_id'], info['pubkey'], info['aes_key'], info['transports'])
 
 class Node:
     def __init__(self):
@@ -96,11 +108,23 @@ class Node:
             f.close()
             aes_key = encoded_key  .decode('utf-8')
 
+        self.known_peers = dict()
+
+        if not os.path.exists(PEERS_STORAGE):
+            self.known_peers = dict()
+            self.save_peers()
+        else:
+            f = open(PEERS_STORAGE, "rb")
+            peers = json.load(f)
+            f.close()
+
+            for peer in peers['peers']:
+                self.known_peers['peer_id'] = peers_info_from_dict(peer)
+
         self.pubkey = key.publickey().export_key()
         self.privkey = key.export_key()
         self.aes_key = aes_key
 
-        self.known_peers = dict()
         self.unverified_peers = dict()
         self.peer_verifications = defaultdict(lambda: set())
 
@@ -110,9 +134,24 @@ class Node:
 
         self.transports = []
 
+    def save_peers(self):
+        f = open(PEERS_STORAGE, 'wb')
+        final_dict = {
+            'peers': [],
+        }
+        for peer in self.known_peers.keys():
+            final_dict['peers'].append(self.known_peers[peer].to_dict())
+        f.write(json.dumps(final_dict).encode())
+        f.close()
+
     def add_transport(self, transport):
         self.transports.append(transport)
         self.transports[-1].set_on_message(self.on_message_receive)
+
+
+    def add_peer(self, peer):
+        self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.aes_key, peer.transports)
+        self.save_peers()
 
     def check_peer_verified(self, peer):
         if self.unverified_peers.get(peer.id) is None:
