@@ -83,6 +83,7 @@ def test_3_nodes():
     loop.run_until_complete(coroutine)
 
     assert nodeA.get_recent_messages(10) == ['biba2']
+    print(nodeB.get_recent_messages(10))
     assert nodeB.get_recent_messages(10) == ['biba2','biba']
     assert nodeC.get_recent_messages(10) == ['biba']
 
@@ -174,10 +175,10 @@ def test_qr_count():
     for i in range(5):
         assert len(nodes[keys[i]].known_peers.keys()) == 4
 
-    assert set(nodes[keys[0]].get_recent_messages(10)) == set(["fourth_hello", "third_hello"])
+    assert nodes[keys[0]].get_recent_messages(10) == ["fourth_hello", "third_hello"]
     for i in range(1, 4):
-        assert set(nodes[keys[i]].get_recent_messages(10)) == set(["fourth_internal_hello", "fourth_hello", "third_internal_hello", "third_hello", "second_internal_hello", "first_internal_hello"])
-    assert set(nodes[keys[4]].get_recent_messages(10)) == set(["fourth_internal_hello", "third_internal_hello"])
+        assert nodes[keys[i]].get_recent_messages(10) == ["fourth_internal_hello", "fourth_hello", "third_internal_hello", "third_hello", "second_internal_hello", "first_internal_hello"]
+    assert nodes[keys[4]].get_recent_messages(10) == ["fourth_internal_hello", "third_internal_hello"]
 
 
 tests = [

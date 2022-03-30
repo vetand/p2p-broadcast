@@ -137,6 +137,8 @@ class Node:
 
 
     def add_peer(self, peer):
+        if peer.id == self.id:
+            return
         self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.transports)
         self.save_peers()
 
@@ -149,6 +151,8 @@ class Node:
             del self.unverified_peers[peer.id]
 
     def add_peer(self, peer, verified_by):
+        if peer.id == self.id:
+            return
         if verified_by is None:
             self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.transports)
         else:
@@ -158,13 +162,13 @@ class Node:
 
     async def send_known_peers(self, peer):
         message = known_peers_message(self.known_peers)
-        message['known_peers'].append(self.get_peer_info().to_json())
+        message['known_peers'].append(self.get_peer_info().to_dict())
         message['sender'] = self.id
         await self.sign_and_send_message(peer, message)
 
     async def add_and_broadcast_peer(self, peer):
         message = {
-            'newcomer': peer.to_json(),
+            'newcomer': peer.to_dict(),
             'sender': self.id,
         }
         awaits = []
@@ -189,7 +193,7 @@ class Node:
     async def broadcast_message_struct(self, message: Message, signature):
         awaits = []
         for peer_id in self.known_peers.keys():
-            awaits.append(self.resend_message_with_signature(self.known_peers[peer_id].get_peer(), message, signature))
+            awaits.append(self.resend_message_with_signature(self.known_peers[peer_id].get_peer(), json.loads(message.to_json()), signature))
         await asyncio.gather(*awaits)
 
     def verify_signature(self, message, signature):    
@@ -253,8 +257,7 @@ class Node:
         # when new peer is broadcasted by 3 QR-code receivers
         elif message[0] == 'newcomer':
             message, signature = message[1], message[2]
-            message['newcomer'] = message['newcomer'].to_json()
-            newcomer = json.loads(message['newcomer'])
+            newcomer = message['newcomer']
 
             if message['sender'] not in self.known_peers.keys():
                 logging.info('Ignore message {} as it came from unknown peer'.format(message))
@@ -342,7 +345,6 @@ class Node:
         cipher = Cipher_PKCS1_v1_5.new(peer.pubkey)
         aes_key = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
         aes_cipher = AESCipher(aes_key)
-
         raw_message = json.dumps(final_message)
         raw_message = aes_cipher.encrypt(raw_message).decode()
 

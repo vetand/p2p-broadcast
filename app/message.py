@@ -1,3 +1,4 @@
+import logging
 import time
 import hashlib
 import json
@@ -33,7 +34,7 @@ class Message:
 def known_peers_message(known_peers):
     peer_list = []
     for peer in known_peers.keys():
-        peer_list.append(known_peers[peer].get_peer().to_json())
+        peer_list.append(known_peers[peer].get_peer().to_dict())
 
     return { 'known_peers': peer_list }
 
@@ -57,7 +58,7 @@ def message_from_json(json_string) -> (str, object, str):
         return (
             'newcomer',
             {
-                'newcomer': Peer.from_json(data['newcomer']),
+                'newcomer': data['newcomer'],
                 'sender': data['sender'],
             },
             signature
@@ -65,7 +66,8 @@ def message_from_json(json_string) -> (str, object, str):
 
     if 'known_peers' in data.keys():
         peer_list = []
+        logging.info("asd {}".format(data['known_peers']))
         for peer in data['known_peers']:
-            peer_list.append(json.loads(peer))
+            peer_list.append(peer)
 
         return ('known_peers', { 'known_peers': peer_list, 'sender': data['sender'] }, signature)
