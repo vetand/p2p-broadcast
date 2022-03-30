@@ -172,7 +172,11 @@ class Node:
             'sender': self.id,
         }
         awaits = []
-        for peer_id in self.known_peers.keys():
+        k = random.sample(
+            self.known_peers.keys(),
+            min(len(self.known_peers), max(3, int(2 * math.pow(math.log(len(self.known_peers)), 1.5))))
+        )
+        for peer_id in k:
             awaits.append(self.sign_and_send_message(self.known_peers[peer_id].get_peer(), message))
         await asyncio.gather(*awaits)
 
@@ -186,13 +190,21 @@ class Node:
             'sender': self.id,
         }
         awaits = []
-        for peer_id in self.known_peers.keys():
+        k = random.sample(
+            self.known_peers.keys(),
+            min(len(self.known_peers), max(3, int(2 * math.pow(math.log(len(self.known_peers)), 1.5))))
+        )
+        for peer_id in k:
             awaits.append(self.sign_and_send_message(self.known_peers[peer_id].get_peer(), message))
         await asyncio.gather(*awaits)
 
     async def broadcast_message_struct(self, message: dict, signature):
         awaits = []
-        for peer_id in self.known_peers.keys():
+        k = random.sample(
+            self.known_peers.keys(),
+            min(len(self.known_peers), max(3, int(2 * math.pow(math.log(len(self.known_peers)), 1.5))))
+        )
+        for peer_id in k:
             awaits.append(self.resend_message_with_signature(self.known_peers[peer_id].get_peer(), message, signature))
         await asyncio.gather(*awaits)
 
