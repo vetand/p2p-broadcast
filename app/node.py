@@ -1,3 +1,4 @@
+import math
 import os.path
 import json
 import logging
@@ -195,7 +196,11 @@ class Node:
             'sender': self.id,
         }
         awaits = []
-        for peer_id in self.known_peers.keys():
+        k = random.sample(
+            self.known_peers.keys(),
+            min(len(self.known_peers), max(3, int(2 * math.log(len(self.known_peers)))))
+        )
+        for peer_id in k:
             awaits.append(self.encode_and_send_message(self.privkey, self.known_peers[peer_id].get_peer(), message))
         await asyncio.gather(*awaits)
 
@@ -291,13 +296,16 @@ class Node:
     def send_qr(self, filename = "QR.png"):
         self.get_peer_info().make_qr_code(filename)
 
-    def get_recent_messages(self, size):
+    def get_recent_messages(self, size, full=False):
         size = int(size)
         result = []
         for item in sorted(self.messages_receipt_time.items(), key = lambda x: x[1])[::-1]:
             if len(result) == size:
                 break
-            result.append(self.messages[item[0]].text)
+            if full:
+                result.append(self.messages[item[0]])
+            else:
+                result.append(self.messages[item[0]].text)
         return result
 
     def get_pubkey(self) -> RSA.RsaKey:

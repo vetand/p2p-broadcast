@@ -59,6 +59,16 @@ async def get_messages(size: int):
     messages = node.get_recent_messages(size)
     return str(messages)
 
+@app.get('/get-recent-messages')
+async def get_recent_messages(size: int):
+    global node
+    messages = node.get_recent_messages(size, full=True)
+    return [json.loads(x.to_json()) for x in messages]
+
+@app.get('/healthcheck')
+async def healthcheck():
+    return 'OK'
+
 @app.post('/broadcast-message')
 async def broadcast_message(text: str):
     global node
