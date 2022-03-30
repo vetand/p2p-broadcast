@@ -9,8 +9,7 @@ import string
 import uuid
 
 
-open('log_file.txt', 'w')
-logging.basicConfig(filename="log_file.txt", level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 
 
 class TestTransport(Transport):
@@ -183,7 +182,6 @@ def test_qr_count():
 
 tests = [
     test_3_nodes,
-    test_message_order,
     test_message_order,
     test_deny_access,
     test_qr_count,

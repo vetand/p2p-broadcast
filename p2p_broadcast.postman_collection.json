@@ -1,67 +1,181 @@
 {
 	"info": {
-		"_postman_id": "bc2b8b87-95a1-489c-96f4-61db62014e0b",
+		"_postman_id": "ecfc73d7-32f8-4b62-b93c-552a80c7c2c0",
 		"name": "p2p_broadcast",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "Upload peer",
+			"name": "Upload peer tcp",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {}
+			},
 			"request": {
 				"method": "POST",
 				"header": [],
 				"body": {
-					"mode": "file",
-					"file": {
-						"src": "/D:/Temp/p2p-broadcast/app/QR.png"
+					"mode": "raw",
+					"raw": "{\n    \"id\": \"c677a9f6-e952-4bbe-888c-eab5536c1c5a\",\n    \"pubkey\": \"-----BEGIN PUBLIC KEY-----\\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCu+pL9Gluux+Fihb9lm1f55n/n\\n16UedvnUY8QE/7CzmvaBH/ilKdEu9yq6BOt+V2bhzk7ujCt1tGM3fstBlEjUkd5O\\njY+HuVHy9thP50YKwOOQ8I5cXfqbl3PEcG7wiKlx+ADh0qvhfipRXsbGwiwFo1tg\\neyavTtM3qpo0i4A38wIDAQAB\\n-----END PUBLIC KEY-----\",\n    \"aes_key\": \"7nt5wnobl8gkywn9\",\n    \"transports\": {\n        \"telegram\": {\n            \"phone\": 79035588546\n        },\n        \"tcp\": {\n            \"host\": \"51.250.105.39\",\n            \"port\": 7767\n        }\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
 					}
 				},
 				"url": {
-					"raw": "localhost:5000/add-peer",
+					"raw": "51.250.99.83:5000/add-json",
 					"host": [
-						"localhost"
+						"51",
+						"250",
+						"99",
+						"83"
 					],
 					"port": "5000",
 					"path": [
-						"add-peer"
+						"add-json"
 					]
 				}
 			},
 			"response": []
 		},
 		{
-			"name": "Get QR",
+			"name": "Upload peer telegram",
 			"request": {
-				"method": "GET",
-				"header": []
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"id\": \"c3227ed2-653d-4af7-8c1f-92d53055079d\",\n    \"pubkey\": \"-----BEGIN PUBLIC KEY-----\\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDqjODNPMYABlFayTiS05Zr/Rf/\\nMDRUjCj828pFSoG55TkLqgPRMk8HJugbOPuzLaDw+86dBwFSBpGiKlost7tkJ5Yd\\nDgc0U99Ltd+3C9/36372EMjp0PyaV0AWAse0eWPjskgG4PnhAmZyRvMVOukszuTm\\nR7VrMeISK/kVfZ43QQIDAQAB\\n-----END PUBLIC KEY-----\",\n    \"aes_key\": \"25iucdvmakqlfwkv\",\n    \"transports\": {\n        \"tcp\": {\n            \"host\": \"51.250.99.83\",\n            \"port\": 7767\n        }\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "51.250.102.96:5000/add-json",
+					"host": [
+						"51",
+						"250",
+						"102",
+						"96"
+					],
+					"port": "5000",
+					"path": [
+						"add-json"
+					]
+				}
 			},
 			"response": []
 		},
 		{
-			"name": "Playbook",
+			"name": "Get QR tcp",
 			"request": {
 				"method": "GET",
-				"header": []
+				"header": [],
+				"url": {
+					"raw": "51.250.99.83:5000/get-json",
+					"host": [
+						"51",
+						"250",
+						"99",
+						"83"
+					],
+					"port": "5000",
+					"path": [
+						"get-json"
+					]
+				}
 			},
 			"response": []
 		},
 		{
-			"name": "Get mesages",
+			"name": "Get QR telegram",
 			"request": {
 				"method": "GET",
-				"header": []
+				"header": [],
+				"url": {
+					"raw": "51.250.102.96:5000/get-json",
+					"host": [
+						"51",
+						"250",
+						"102",
+						"96"
+					],
+					"port": "5000",
+					"path": [
+						"get-json"
+					]
+				}
 			},
 			"response": []
 		},
 		{
-			"name": "Broadcast message",
+			"name": "Get messages tcp",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "51.250.99.83:5000/get-messages?size=10",
+					"host": [
+						"51",
+						"250",
+						"99",
+						"83"
+					],
+					"port": "5000",
+					"path": [
+						"get-messages"
+					],
+					"query": [
+						{
+							"key": "size",
+							"value": "10"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get messages telegram",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "51.250.102.96:5000/get-messages?size=10",
+					"host": [
+						"51",
+						"250",
+						"102",
+						"96"
+					],
+					"port": "5000",
+					"path": [
+						"get-messages"
+					],
+					"query": [
+						{
+							"key": "size",
+							"value": "10"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Broadcast message tcp",
 			"request": {
 				"method": "POST",
 				"header": [],
 				"url": {
-					"raw": "localhost:5000/broadcast-message?text=keks",
+					"raw": "51.250.99.83:5000/broadcast-message?text=iamtcp",
 					"host": [
-						"localhost"
+						"51",
+						"250",
+						"99",
+						"83"
 					],
 					"port": "5000",
 					"path": [
@@ -70,7 +184,34 @@
 					"query": [
 						{
 							"key": "text",
-							"value": "keks"
+							"value": "iamtcp"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Broadcast message tetegram",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "51.250.102.96:5000/broadcast-message?text=iamtcp",
+					"host": [
+						"51",
+						"250",
+						"102",
+						"96"
+					],
+					"port": "5000",
+					"path": [
+						"broadcast-message"
+					],
+					"query": [
+						{
+							"key": "text",
+							"value": "iamtcp"
 						}
 					]
 				}
