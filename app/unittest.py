@@ -10,7 +10,7 @@ import uuid
 
 
 open('log_file.txt', 'w')
-logging.basicConfig(filename="log_file.txt", level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 
 
 class TestTransport(Transport):
