@@ -13,6 +13,7 @@ import hashlib
 from Crypto import Random
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
+from Crypto.Cipher import PKCS1_v1_5 as Cipher_PKCS1_v1_5
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 from peer import Peer
@@ -21,7 +22,7 @@ from transport import Transport
 from Crypto.Cipher import AES
 from collections import defaultdict
 
-MAX_CACHE_MESSAGES = 10
+MAX_CACHE_MESSAGES = 50
 KEY_STORAGE = 'key.pem'
 AES_KEY_STORAGE = 'aes.txt'
 ID_STORAGE = 'id.txt'
@@ -52,25 +53,23 @@ class AESCipher(object):
         return s[:-ord(s[len(s)-1:])]
 
 class PeersInfo:
-    def __init__(self, peer_id, pubkey, aes_key, transports):
+    def __init__(self, peer_id, pubkey, transports):
         self.peer_id = peer_id
         self.pubkey = pubkey
-        self.aes_key = aes_key
         self.transports = transports
 
     def get_peer(self):
-        return Peer(self.peer_id, self.pubkey, self.aes_key, self.transports)
+        return Peer(self.peer_id, self.pubkey, self.transports)
 
     def to_dict(self):
         return {
             'peer_id': self.peer_id,
             'pubkey': self.pubkey.export_key().decode(),
-            'aes_key': self.aes_key,
             'transports': self.transports,
         }
 
 def peers_info_from_dict(info):
-    return PeersInfo(info['peer_id'], info['pubkey'], info['aes_key'], info['transports'])
+    return PeersInfo(info['peer_id'], info['pubkey'], info['transports'])
 
 class Node:
     def __init__(self):
@@ -95,19 +94,7 @@ class Node:
             f = open(KEY_STORAGE, "rb")
             encoded_key = f.read()
             f.close()
-            key = RSA.import_key(encoded_key) 
-
-        if not os.path.exists(AES_KEY_STORAGE):
-            aes_key = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
-
-            f = open(AES_KEY_STORAGE,'wb')
-            f.write(aes_key.encode('utf-8'))
-            f.close()
-        else:
-            f = open(AES_KEY_STORAGE, "rb")
-            encoded_key = f.read()
-            f.close()
-            aes_key = encoded_key  .decode('utf-8')
+            key = RSA.import_key(encoded_key)
 
         self.known_peers = dict()
 
@@ -124,7 +111,6 @@ class Node:
 
         self.pubkey = key.publickey().export_key()
         self.privkey = key.export_key()
-        self.aes_key = aes_key
 
         self.unverified_peers = dict()
         self.peer_verifications = defaultdict(lambda: set())
@@ -151,7 +137,7 @@ class Node:
 
 
     def add_peer(self, peer):
-        self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.aes_key, peer.transports)
+        self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.transports)
         self.save_peers()
 
     def check_peer_verified(self, peer):
@@ -164,10 +150,10 @@ class Node:
 
     def add_peer(self, peer, verified_by):
         if verified_by is None:
-            self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.aes_key, peer.transports)
+            self.known_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.transports)
         else:
             self.peer_verifications[peer.id].add(verified_by)
-            self.unverified_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.aes_key, peer.transports)
+            self.unverified_peers[peer.id] = PeersInfo(peer.id, peer.pubkey, peer.transports)
             self.check_peer_verified(peer)
 
     async def send_known_peers(self, peer):
@@ -196,10 +182,11 @@ class Node:
             'sender': self.id,
         }
         awaits = []
-        k = random.sample(
-            self.known_peers.keys(),
-            min(len(self.known_peers), max(3, int(2 * math.log(len(self.known_peers)))))
-        )
+        # k = random.sample(
+        #     self.known_peers.keys(),
+        #     min(len(self.known_peers), max(3, int(2 * math.log(len(self.known_peers)))))
+        # )
+        k = self.known_peers.keys()
         for peer_id in k:
             awaits.append(self.encode_and_send_message(self.privkey, self.known_peers[peer_id].get_peer(), message))
         await asyncio.gather(*awaits)
@@ -240,10 +227,12 @@ class Node:
             del self.messages_receipt_time[message_to_exclude[0]]
             del self.messages[message_to_exclude[0]]
 
-    def on_message_receive(self, req: str):
-        req = req['message']
-        cipfer = AESCipher(self.aes_key)
-        req = cipfer.decrypt(req)
+    def on_message_receive(self, q: dict):
+        req = json.loads(q['message'])
+        c = Cipher_PKCS1_v1_5.new(RSA.importKey(self.privkey))
+        res = c.decrypt(base64.b64decode(req['key']), None).decode()
+        cipfer = AESCipher(res)
+        req = cipfer.decrypt(req["payload"])
 
         message = message_from_json(req)
         logging.info('Got message {}'.format(message))
@@ -252,9 +241,13 @@ class Node:
         if message[0] == 'message':
             if self.validate_message(message[1], message[2]):
                 message = message[1]
-                self.messages_receipt_time[message.id] = time.time()
-                self.messages[message.id] = message
-                self.inspect_messages_store()
+                if message.id in self.messages_receipt_time:
+                    logging.info("Message {} already in store".format(message))
+                else:
+                    self.messages_receipt_time[message.id] = time.time()
+                    self.messages[message.id] = message
+                    self.inspect_messages_store()
+                    self.broadcast_message(message.text)
         # when new peer is broadcasted by 3 QR-code receivers
         elif message[0] == 'newcomer':
             message, signature = message[1], message[2]
@@ -269,7 +262,7 @@ class Node:
                 logging.info('Ignore new peer as bad signature')
                 return False
 
-            peer = Peer(newcomer['id'], RSA.import_key(newcomer['pubkey']), newcomer['aes_key'], newcomer['transports'])
+            peer = Peer(newcomer['id'], RSA.import_key(newcomer['pubkey']), newcomer['transports'])
             self.add_peer(peer, message['sender'])
         # receive full peer_list from other node
         elif message[0] == 'known_peers':
@@ -291,7 +284,7 @@ class Node:
         infos = dict()
         for t in self.transports:
             infos[t.get_name()] = t.get_peer_info()
-        return Peer(self.id, self.get_pubkey(), self.aes_key, infos)
+        return Peer(self.id, self.get_pubkey(), infos)
 
     def send_qr(self, filename = "QR.png"):
         self.get_peer_info().make_qr_code(filename)
@@ -323,12 +316,20 @@ class Node:
         digest.update(json.dumps(message).encode('utf-8')) 
         signer = PKCS1_v1_5.new(RSA.importKey(privkey))
         final_message['signature'] = signer.sign(digest).hex()
+        cipher = Cipher_PKCS1_v1_5.new(peer.pubkey)
+
+        aes_key = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
+        aes_cipher = AESCipher(aes_key)
+
         raw_message = json.dumps(final_message)
-        cipfer = AESCipher(peer.aes_key)
-        raw_message = cipfer.encrypt(raw_message)
+        raw_message = aes_cipher.encrypt(raw_message).decode()
+
+        key_b64 = base64.b64encode(cipher.encrypt(aes_key.encode())).decode()
+
+        the_final_stuff = json.dumps({"payload": raw_message, "key": key_b64})
 
         for transport in self.transports:
-            if await transport.send_message(peer, raw_message):
+            if await transport.send_message(peer, the_final_stuff):
                 return
 
         logging.info("Couldn't send message to peer {}, available transports: {}".format(peer.id, list(t.get_name() for t in self.transports)))
