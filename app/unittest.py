@@ -82,7 +82,6 @@ def test_3_nodes():
     loop.run_until_complete(coroutine)
 
     assert nodeA.get_recent_messages(10) == ['biba2']
-    print(nodeB.get_recent_messages(10))
     assert nodeB.get_recent_messages(10) == ['biba2','biba']
     assert nodeC.get_recent_messages(10) == ['biba']
 
