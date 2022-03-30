@@ -19,7 +19,7 @@ class TCPTransport(Transport):
         return TCPTransport(d)
 
     async def send_message(self, peer, message):
-        message = { 'message': message.decode() }
+        message = {'message': message}
         if peer.transports.get('tcp') is not None:
             try:
                 wrapped_message = {"protocol": "p2p-1.0", "payload": message}
