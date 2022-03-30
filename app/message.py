@@ -6,11 +6,11 @@ import uuid
 from peer import Peer
 
 class Message:
-    def __init__(self, node_id = "", text = ""):
+    def __init__(self, text, sender, msg_id=str(uuid.uuid4())):
         self.time_received = time.time()
-        self.text = ""
-        self.id = str(uuid.uuid4())
-        self.sender = node_id
+        self.text = text
+        self.id = sender
+        self.sender = msg_id
         
     def to_json(self):
         data = dict()
@@ -18,6 +18,10 @@ class Message:
         data['text'] = self.text
         data['sender'] = self.sender
         return json.dumps(data)
+
+    @staticmethod
+    def from_dict(d):
+        return Message(d['text'], d['sender'], d['id'])
 
     def __eq__(self, other):
         return self.id == other.id
@@ -38,36 +42,21 @@ def known_peers_message(known_peers):
 
     return { 'known_peers': peer_list }
 
-def message_from_json(json_string) -> (str, object, str):
+def message_from_json(json_string) -> (str, dict, str):
     signature = None
-    if 'signature' in json.loads(json_string).keys():
-        signature = json.loads(json_string)['signature']
-    if 'message' in json.loads(json_string).keys():
+    d = json.loads(json_string)
+    if 'signature' in d.keys():
+        signature = d['signature']
+    if 'message' in d.keys():
         data = json.loads(json_string)['message']
     else:
         data = json.loads(json_string)
 
     if 'text' in data.keys():
-        result = Message()
-        result.id = data['id']
-        result.text = data['text']
-        result.sender = data['sender']
-        return ('message', result, signature)
+        return ('message', data, signature)
 
     if 'newcomer' in data.keys():
-        return (
-            'newcomer',
-            {
-                'newcomer': data['newcomer'],
-                'sender': data['sender'],
-            },
-            signature
-        )
+        return ('newcomer', data, signature)
 
     if 'known_peers' in data.keys():
-        peer_list = []
-        logging.info("asd {}".format(data['known_peers']))
-        for peer in data['known_peers']:
-            peer_list.append(peer)
-
-        return ('known_peers', { 'known_peers': peer_list, 'sender': data['sender'] }, signature)
+        return ('known_peers', data, signature)

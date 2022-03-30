@@ -190,41 +190,22 @@ class Node:
             awaits.append(self.sign_and_send_message(self.known_peers[peer_id].get_peer(), message))
         await asyncio.gather(*awaits)
 
-    async def broadcast_message_struct(self, message: Message, signature):
+    async def broadcast_message_struct(self, message: dict, signature):
         awaits = []
         for peer_id in self.known_peers.keys():
-            awaits.append(self.resend_message_with_signature(self.known_peers[peer_id].get_peer(), json.loads(message.to_json()), signature))
+            awaits.append(self.resend_message_with_signature(self.known_peers[peer_id].get_peer(), message, signature))
         await asyncio.gather(*awaits)
 
-    def verify_signature(self, message, signature):    
+    def verify_signature(self, message: dict, signature: str):
+        if message['sender'] not in self.known_peers:
+            return False
         peer = self.known_peers[message['sender']]
         digest = SHA256.new()
-        digest.update(json.dumps(message).encode('utf-8'))
-
+        digest.update(json.dumps(message, sort_keys=True).encode())
         if not peer.pubkey:
             return False
-
         verifier = PKCS1_v1_5.new(peer.pubkey)
         return verifier.verify(digest, bytes.fromhex(signature))
-
-    def validate_message(self, message, signature) -> bool:
-        if message.sender not in self.known_peers.keys():
-            logging.info('Ignore message {} as it came from unknown peer'.format(message.id))
-            return False
-
-        raw_message = {
-            'id': message.id,
-            'text': message.text,
-            'sender': message.sender,
-        }
-        if not self.verify_signature(raw_message , signature):
-            logging.info('Ignore message {} as bad signature'.format(message.id))
-            return False
-
-        if message.id in self.messages_receipt_time.keys():
-            logging.info('Ignore message {} as it was previously broadcasted'.format(message.id))
-            return False
-        return True
 
     def inspect_messages_store(self):
         if len(self.messages_receipt_time) >= MAX_CACHE_MESSAGES:
@@ -239,34 +220,25 @@ class Node:
         cipfer = AESCipher(res)
         req = cipfer.decrypt(req["payload"])
 
-        message = message_from_json(req)
-        logging.info('Got message {}'.format(message))
+        t, message, signature = message_from_json(req)
 
         # simple user message
-        if message[0] == 'message':
-            if self.validate_message(message[1], message[2]):
-                msg = message
-                message = message[1]
-                if message.id in self.messages_receipt_time:
+        if t == 'message':
+            if self.verify_signature(message, signature):
+                if message['id'] in self.messages_receipt_time:
                     logging.info("Message {} already in store".format(message))
                 else:
-                    self.messages_receipt_time[message.id] = time.time()
-                    self.messages[message.id] = message
+                    m = Message.from_dict(message)
+                    self.messages_receipt_time[message['id']] = time.time()
+                    self.messages[message['id']] = m
                     self.inspect_messages_store()
-                    asyncio.ensure_future(self.broadcast_message_struct(msg[1], msg[2]))
+                    asyncio.ensure_future(self.broadcast_message_struct(message, signature))
         # when new peer is broadcasted by 3 QR-code receivers
-        elif message[0] == 'newcomer':
-            message, signature = message[1], message[2]
+        elif t == 'newcomer':
             newcomer = message['newcomer']
-
             if message['sender'] not in self.known_peers.keys():
                 logging.info('Ignore message {} as it came from unknown peer'.format(message))
                 return
-
-            if not self.verify_signature(message, signature):
-                logging.info('Ignore new peer as bad signature')
-                return False
-
             if newcomer['id'] in self.known_peers.keys() or message['sender'] in self.peer_verifications[newcomer['id']]:
                 logging.info('Already added')
                 return
@@ -276,9 +248,7 @@ class Node:
             asyncio.ensure_future(self.broadcast_message_struct(message, signature))
 
         # receive full peer_list from other node
-        elif message[0] == 'known_peers':
-            message, signature = message[1], message[2]
-
+        elif t == 'known_peers':
             if len(self.known_peers) != 0:
                 if message['sender'] not in self.known_peers.keys():
                     logging.info('Ignore message {} as it came from unknown peer'.format(message))
@@ -287,11 +257,9 @@ class Node:
                 if not self.verify_signature(message, signature):
                     logging.info('Ignore new peer as bad signature')
                     return False
-
             cnt = 0
-
             for peer in message['known_peers']:
-                if peer['id'] not in self.known_peers.keys():
+                if peer['id'] != self.id and peer['id'] not in self.known_peers.keys():
                     cnt += 1
                 self.add_peer(Peer.from_dict(peer), None)
             if cnt > 0:
@@ -330,7 +298,7 @@ class Node:
         final_message = dict()
         final_message['message'] = message
         digest = SHA256.new()
-        digest.update(json.dumps(message).encode('utf-8')) 
+        digest.update(json.dumps(message, sort_keys=True).encode())
         signer = PKCS1_v1_5.new(RSA.importKey(self.privkey))
         final_message['signature'] = signer.sign(digest).hex()
         await self.send_securely(peer, final_message)
@@ -345,7 +313,7 @@ class Node:
         cipher = Cipher_PKCS1_v1_5.new(peer.pubkey)
         aes_key = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
         aes_cipher = AESCipher(aes_key)
-        raw_message = json.dumps(final_message)
+        raw_message = json.dumps(final_message, sort_keys=True)
         raw_message = aes_cipher.encrypt(raw_message).decode()
 
         key_b64 = base64.b64encode(cipher.encrypt(aes_key.encode())).decode()
