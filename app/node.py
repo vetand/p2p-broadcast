@@ -160,7 +160,7 @@ class Node:
         message = known_peers_message(self.known_peers)
         message['known_peers'].append(self.get_peer_info().to_json())
         message['sender'] = self.id
-        await self.encode_and_send_message(self.privkey, peer, message)
+        await self.sign_and_send_message(peer, message)
 
     async def add_and_broadcast_peer(self, peer):
         message = {
@@ -169,26 +169,27 @@ class Node:
         }
         awaits = []
         for peer_id in self.known_peers.keys():
-            awaits.append(self.encode_and_send_message(self.privkey, self.known_peers[peer_id].get_peer(), message))
+            awaits.append(self.sign_and_send_message(self.known_peers[peer_id].get_peer(), message))
         await asyncio.gather(*awaits)
 
         await self.send_known_peers(peer)
         self.add_peer(peer, self.id)
 
-    async def broadcast_message(self, text):
+    async def broadcast_message(self, text: str):
         message = {
             'id': str(uuid.uuid4()),
             'text': text,
             'sender': self.id,
         }
         awaits = []
-        # k = random.sample(
-        #     self.known_peers.keys(),
-        #     min(len(self.known_peers), max(3, int(2 * math.log(len(self.known_peers)))))
-        # )
-        k = self.known_peers.keys()
-        for peer_id in k:
-            awaits.append(self.encode_and_send_message(self.privkey, self.known_peers[peer_id].get_peer(), message))
+        for peer_id in self.known_peers.keys():
+            awaits.append(self.sign_and_send_message(self.known_peers[peer_id].get_peer(), message))
+        await asyncio.gather(*awaits)
+
+    async def broadcast_message_struct(self, message: Message, signature):
+        awaits = []
+        for peer_id in self.known_peers.keys():
+            awaits.append(self.resend_message_with_signature(self.known_peers[peer_id].get_peer(), message, signature))
         await asyncio.gather(*awaits)
 
     def verify_signature(self, message, signature):    
@@ -240,6 +241,7 @@ class Node:
         # simple user message
         if message[0] == 'message':
             if self.validate_message(message[1], message[2]):
+                msg = message
                 message = message[1]
                 if message.id in self.messages_receipt_time:
                     logging.info("Message {} already in store".format(message))
@@ -247,7 +249,7 @@ class Node:
                     self.messages_receipt_time[message.id] = time.time()
                     self.messages[message.id] = message
                     self.inspect_messages_store()
-                    self.broadcast_message(message.text)
+                    asyncio.ensure_future(self.broadcast_message_struct(msg[1], msg[2]))
         # when new peer is broadcasted by 3 QR-code receivers
         elif message[0] == 'newcomer':
             message, signature = message[1], message[2]
@@ -262,8 +264,14 @@ class Node:
                 logging.info('Ignore new peer as bad signature')
                 return False
 
+            if newcomer['id'] in self.known_peers.keys() or message['sender'] in self.peer_verifications[newcomer['id']]:
+                logging.info('Already added')
+                return
+
             peer = Peer(newcomer['id'], RSA.import_key(newcomer['pubkey']), newcomer['transports'])
             self.add_peer(peer, message['sender'])
+            asyncio.ensure_future(self.broadcast_message_struct(message, signature))
+
         # receive full peer_list from other node
         elif message[0] == 'known_peers':
             message, signature = message[1], message[2]
@@ -277,8 +285,14 @@ class Node:
                     logging.info('Ignore new peer as bad signature')
                     return False
 
+            cnt = 0
+
             for peer in message['known_peers']:
+                if peer['id'] not in self.known_peers.keys():
+                    cnt += 1
                 self.add_peer(Peer.from_dict(peer), None)
+            if cnt > 0:
+                asyncio.ensure_future(self.broadcast_message_struct(message, signature))
 
     def get_peer_info(self) -> Peer:
         infos = dict()
@@ -307,17 +321,25 @@ class Node:
         f.close()
         return result
 
-    async def encode_and_send_message(self, privkey, peer, message):
+    async def sign_and_send_message(self, peer, message):
         logging.info("Sign and send message {} to peer {}".format(message, peer.id))
 
         final_message = dict()
         final_message['message'] = message
         digest = SHA256.new()
         digest.update(json.dumps(message).encode('utf-8')) 
-        signer = PKCS1_v1_5.new(RSA.importKey(privkey))
+        signer = PKCS1_v1_5.new(RSA.importKey(self.privkey))
         final_message['signature'] = signer.sign(digest).hex()
-        cipher = Cipher_PKCS1_v1_5.new(peer.pubkey)
+        await self.send_securely(peer, final_message)
 
+    async def resend_message_with_signature(self, peer, message, signature):
+        final_message = dict()
+        final_message['message'] = message
+        final_message['signature'] = signature
+        await self.send_securely(peer, final_message)
+
+    async def send_securely(self, peer, final_message):
+        cipher = Cipher_PKCS1_v1_5.new(peer.pubkey)
         aes_key = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
         aes_cipher = AESCipher(aes_key)
 
@@ -332,4 +354,5 @@ class Node:
             if await transport.send_message(peer, the_final_stuff):
                 return
 
-        logging.info("Couldn't send message to peer {}, available transports: {}".format(peer.id, list(t.get_name() for t in self.transports)))
+        logging.info("Couldn't send message to peer {}, available transports: {}".format(peer.id, list(
+            t.get_name() for t in self.transports)))
